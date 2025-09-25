@@ -47,6 +47,16 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        bus: {
+          primary: "hsl(var(--bus-primary))",
+          secondary: "hsl(var(--bus-secondary))",
+        },
+        seat: {
+          available: "hsl(var(--seat-available))",
+          occupied: "hsl(var(--seat-occupied))",
+          empty: "hsl(var(--seat-empty))",
+          hover: "hsl(var(--seat-hover))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
