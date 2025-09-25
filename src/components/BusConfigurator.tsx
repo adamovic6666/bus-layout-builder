@@ -1,31 +1,68 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { DndProvider } from 'react-dnd';
+import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { BusLayout } from "./BusLayout";
-import { Plus, Minus, Bus, Users, Settings2 } from "lucide-react";
+import { PeopleManager, Person } from "./PeopleManager";
+import { TourGuideConfig } from "./TourGuideConfig";
+import { Plus, Minus, Bus, Users, Settings2, Save, Share, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 export interface BusConfig {
+  busName: string;
+  licensePlates: string;
   mainDeckRows: number;
   upperDeckRows: number;
   hasUpperDeck: boolean;
   lastRowSeats: 4 | 5;
+  tourGuideSeats: string[];
   emptySpaces: Set<string>;
   seatNumbers: Map<string, string>;
+  people: Person[];
+  seatAssignments: Map<string, string>; // seatId -> personId
 }
 
 const BusConfigurator = () => {
   const [config, setConfig] = useState<BusConfig>({
+    busName: "",
+    licensePlates: "",
     mainDeckRows: 12,
     upperDeckRows: 3,
     hasUpperDeck: false,
     lastRowSeats: 5,
+    tourGuideSeats: [],
     emptySpaces: new Set(),
     seatNumbers: new Map(),
+    people: [],
+    seatAssignments: new Map(),
   });
+
+  const [savedConfigId, setSavedConfigId] = useState<string | null>(null);
+
+  // Log the complete configuration whenever it changes
+  useEffect(() => {
+    console.log("=== BUS CONFIGURATION ===");
+    console.log("Bus Name:", config.busName);
+    console.log("License Plates:", config.licensePlates);
+    console.log("Main Deck Rows:", config.mainDeckRows);
+    console.log("Upper Deck Rows:", config.upperDeckRows);
+    console.log("Has Upper Deck:", config.hasUpperDeck);
+    console.log("Last Row Seats:", config.lastRowSeats);
+    console.log("Tour Guide Seats:", config.tourGuideSeats);
+    console.log("Empty Spaces:", Array.from(config.emptySpaces));
+    console.log("Seat Numbers:", Object.fromEntries(config.seatNumbers));
+    console.log("People:", config.people);
+    console.log("Seat Assignments:", Object.fromEntries(config.seatAssignments));
+    console.log("Total Seats:", getTotalSeats());
+    console.log("========================");
+  }, [config]);
 
   const updateMainDeckRows = (increment: number) => {
     const newRows = Math.max(1, Math.min(25, config.mainDeckRows + increment));
@@ -74,6 +111,224 @@ const BusConfigurator = () => {
     setConfig(prev => ({ ...prev, seatNumbers: newSeatNumbers }));
   };
 
+  const autoAssignPeople = () => {
+    const availableSeats = getAvailableSeats();
+    const newAssignments = new Map<string, string>();
+    
+    config.people.forEach((person, index) => {
+      if (index < availableSeats.length) {
+        newAssignments.set(availableSeats[index], person.id);
+      }
+    });
+    
+    setConfig(prev => ({ ...prev, seatAssignments: newAssignments }));
+    toast(`Assigned ${Math.min(config.people.length, availableSeats.length)} people to seats`);
+  };
+
+  const getAvailableSeats = (): string[] => {
+    const allSeats: string[] = [];
+    
+    // Main deck seats
+    for (let row = 1; row <= config.mainDeckRows; row++) {
+      const seatsInRow = row === config.mainDeckRows ? config.lastRowSeats : 4;
+      for (let seatIndex = 0; seatIndex < seatsInRow; seatIndex++) {
+        const seatLetter = String.fromCharCode(65 + seatIndex); // A, B, C, D, E
+        const seatId = `${row}${seatLetter}`;
+        if (!config.emptySpaces.has(seatId) && !config.tourGuideSeats.includes(seatId)) {
+          allSeats.push(seatId);
+        }
+      }
+    }
+    
+    // Upper deck seats
+    if (config.hasUpperDeck) {
+      for (let row = 1; row <= config.upperDeckRows; row++) {
+        for (let seatIndex = 0; seatIndex < 4; seatIndex++) {
+          const seatLetter = String.fromCharCode(65 + seatIndex);
+          const seatId = `U${row}${seatLetter}`;
+          if (!config.emptySpaces.has(seatId) && !config.tourGuideSeats.includes(seatId)) {
+            allSeats.push(seatId);
+          }
+        }
+      }
+    }
+    
+    return allSeats;
+  };
+
+  const saveConfiguration = async () => {
+    if (!config.busName.trim()) {
+      toast.error("Please enter a bus name");
+      return;
+    }
+    if (!config.licensePlates.trim()) {
+      toast.error("Please enter license plates");
+      return;
+    }
+
+    try {
+      const configData = {
+        busName: config.busName,
+        licensePlates: config.licensePlates,
+        mainDeckRows: config.mainDeckRows,
+        upperDeckRows: config.upperDeckRows,
+        hasUpperDeck: config.hasUpperDeck,
+        lastRowSeats: config.lastRowSeats,
+        tourGuideSeats: config.tourGuideSeats,
+        emptySpaces: Array.from(config.emptySpaces),
+        seatNumbers: Object.fromEntries(config.seatNumbers),
+        people: config.people,
+        seatAssignments: Object.fromEntries(config.seatAssignments),
+      };
+
+      let data, error;
+      
+      if (savedConfigId) {
+        // Update existing configuration
+        const result = await supabase
+          .from('bus_configurations')
+          .update({
+            bus_name: config.busName,
+            license_plates: config.licensePlates,
+            main_deck_rows: config.mainDeckRows,
+            upper_deck_rows: config.upperDeckRows,
+            has_upper_deck: config.hasUpperDeck,
+            last_row_seats: config.lastRowSeats,
+            tour_guide_seats: config.tourGuideSeats,
+            empty_spaces: Array.from(config.emptySpaces),
+            seat_numbers: Object.fromEntries(config.seatNumbers),
+            people: config.people as any,
+            config_data: configData as any,
+          })
+          .eq('id', savedConfigId)
+          .select()
+          .single();
+        data = result.data;
+        error = result.error;
+      } else {
+        // Insert new configuration
+        const result = await supabase
+          .from('bus_configurations')
+          .insert({
+            bus_name: config.busName,
+            license_plates: config.licensePlates,
+            main_deck_rows: config.mainDeckRows,
+            upper_deck_rows: config.upperDeckRows,
+            has_upper_deck: config.hasUpperDeck,
+            last_row_seats: config.lastRowSeats,
+            tour_guide_seats: config.tourGuideSeats,
+            empty_spaces: Array.from(config.emptySpaces),
+            seat_numbers: Object.fromEntries(config.seatNumbers),
+            people: config.people as any,
+            config_data: configData as any,
+          })
+          .select()
+          .single();
+        data = result.data;
+        error = result.error;
+      }
+
+      if (error) throw error;
+
+      setSavedConfigId(data.id);
+      toast.success("Bus configuration saved successfully!");
+    } catch (error) {
+      console.error('Error saving configuration:', error);
+      toast.error("Failed to save configuration");
+    }
+  };
+
+  const shareConfiguration = async () => {
+    if (!savedConfigId) {
+      await saveConfiguration();
+      if (!savedConfigId) return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('bus_configurations')
+        .select('share_token')
+        .eq('id', savedConfigId)
+        .single();
+
+      if (error) throw error;
+
+      const shareUrl = `${window.location.origin}/shared/${data.share_token}`;
+      await navigator.clipboard.writeText(shareUrl);
+      toast.success("Share link copied to clipboard!");
+    } catch (error) {
+      console.error('Error sharing configuration:', error);
+      toast.error("Failed to create share link");
+    }
+  };
+
+  const downloadConfiguration = () => {
+    const configData = {
+      busName: config.busName,
+      licensePlates: config.licensePlates,
+      mainDeckRows: config.mainDeckRows,
+      upperDeckRows: config.upperDeckRows,
+      hasUpperDeck: config.hasUpperDeck,
+      lastRowSeats: config.lastRowSeats,
+      tourGuideSeats: config.tourGuideSeats,
+      emptySpaces: Array.from(config.emptySpaces),
+      seatNumbers: Object.fromEntries(config.seatNumbers),
+      people: config.people,
+      seatAssignments: Object.fromEntries(config.seatAssignments),
+    };
+
+    const dataStr = JSON.stringify(configData, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = config.busName ? `${config.busName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_bus_config.json` : 'bus_config.json';
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+    
+    toast.success("Configuration downloaded!");
+  };
+
+  const printConfiguration = async () => {
+    const busLayoutElement = document.getElementById('bus-layout-print');
+    if (!busLayoutElement) {
+      toast.error("Bus layout not found for printing");
+      return;
+    }
+
+    try {
+      const canvas = await html2canvas(busLayoutElement);
+      const imgData = canvas.toDataURL('image/png');
+      
+      const pdf = new jsPDF();
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+      
+      const fileName = config.busName ? `${config.busName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_layout.pdf` : 'bus_layout.pdf';
+      pdf.save(fileName);
+      
+      toast.success("Bus layout exported to PDF!");
+    } catch (error) {
+      console.error('Error printing configuration:', error);
+      toast.error("Failed to export PDF");
+    }
+  };
+
   const getTotalSeats = () => {
     const regularRows = config.mainDeckRows - 1;
     const regularSeats = regularRows * 4;
@@ -83,8 +338,9 @@ const BusConfigurator = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-accent/5 p-4">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <DndProvider backend={HTML5Backend}>
+      <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-accent/5 p-4">
+        <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">
@@ -101,6 +357,33 @@ const BusConfigurator = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Controls Panel */}
           <div className="lg:col-span-1 space-y-4">
+            {/* Bus Information */}
+            <Card className="shadow-lg border-border/60">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-bus-secondary">
+                  <Bus className="h-5 w-5" />
+                  Bus Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Bus Name</Label>
+                  <Input
+                    placeholder="Enter bus name"
+                    value={config.busName}
+                    onChange={(e) => setConfig(prev => ({ ...prev, busName: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">License Plates</Label>
+                  <Input
+                    placeholder="Enter license plates"
+                    value={config.licensePlates}
+                    onChange={(e) => setConfig(prev => ({ ...prev, licensePlates: e.target.value }))}
+                  />
+                </div>
+              </CardContent>
+            </Card>
             <Card className="shadow-lg border-border/60">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-bus-secondary">
@@ -228,13 +511,53 @@ const BusConfigurator = () => {
               </CardContent>
             </Card>
 
+            {/* Tour Guide Configuration */}
+            <TourGuideConfig
+              tourGuideSeats={config.tourGuideSeats}
+              onTourGuideSeatsChange={(seats) => setConfig(prev => ({ ...prev, tourGuideSeats: seats }))}
+              totalSeats={getTotalSeats()}
+            />
+
+            {/* People Manager */}
+            <PeopleManager
+              people={config.people}
+              onPeopleChange={(people) => setConfig(prev => ({ ...prev, people }))}
+              onAutoAssign={autoAssignPeople}
+            />
+
+            {/* Action Buttons */}
+            <Card className="shadow-lg border-border/60">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm text-bus-secondary">Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Button onClick={saveConfiguration} className="w-full" size="sm">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Configuration
+                </Button>
+                <div className="grid grid-cols-3 gap-1">
+                  <Button onClick={shareConfiguration} variant="outline" size="sm">
+                    <Share className="h-3 w-3" />
+                  </Button>
+                  <Button onClick={downloadConfiguration} variant="outline" size="sm">
+                    <Download className="h-3 w-3" />
+                  </Button>
+                  <Button onClick={printConfiguration} variant="outline" size="sm">
+                    <Printer className="h-3 w-3" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             <Card className="shadow-lg border-border/60">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm text-bus-secondary">Instructions</CardTitle>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground space-y-2">
                 <p>• Click seats to mark as empty spaces (doors, facilities)</p>
+                <p>• Click seats to select tour guide positions</p>
                 <p>• Double-click seat numbers to edit them</p>
+                <p>• Drag people from the list to assign seats</p>
                 <p>• Use controls to adjust bus configuration</p>
               </CardContent>
             </Card>
@@ -242,15 +565,39 @@ const BusConfigurator = () => {
 
           {/* Bus Layout */}
           <div className="lg:col-span-3">
-            <BusLayout
-              config={config}
-              onToggleEmptySpace={toggleEmptySpace}
-              onUpdateSeatNumber={updateSeatNumber}
-            />
+            <div id="bus-layout-print">
+              <BusLayout
+                config={config}
+                onToggleEmptySpace={toggleEmptySpace}
+                onUpdateSeatNumber={updateSeatNumber}
+                onToggleTourGuideSeat={(seatId) => {
+                  const newTourGuideSeats = config.tourGuideSeats.includes(seatId)
+                    ? config.tourGuideSeats.filter(seat => seat !== seatId)
+                    : [...config.tourGuideSeats, seatId];
+                  setConfig(prev => ({ ...prev, tourGuideSeats: newTourGuideSeats }));
+                }}
+                onSeatAssignment={(seatId, personId) => {
+                  const newAssignments = new Map(config.seatAssignments);
+                  if (personId) {
+                    // Remove person from any other seat first
+                    for (const [seat, person] of newAssignments.entries()) {
+                      if (person === personId) {
+                        newAssignments.delete(seat);
+                      }
+                    }
+                    newAssignments.set(seatId, personId);
+                  } else {
+                    newAssignments.delete(seatId);
+                  }
+                  setConfig(prev => ({ ...prev, seatAssignments: newAssignments }));
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
     </div>
+    </DndProvider>
   );
 };
 
