@@ -82,12 +82,12 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber }: Bu
   const getDefaultSeatNumber = (floor: 'lower' | 'upper', row: number, position: number) => {
     if (floor === 'upper') {
       // Upper deck starts after lower deck seats
-      const lowerDeckSeats = (config.rows - 1) * 4 + config.lastRowSeats;
+      const lowerDeckSeats = (config.mainDeckRows - 1) * 4 + config.lastRowSeats;
       const upperSeatBase = lowerDeckSeats + (row - 1) * 4;
       return (upperSeatBase + position).toString();
     } else {
       // Lower deck numbering
-      if (row === config.rows) {
+      if (row === config.mainDeckRows) {
         // Last row
         const baseNumber = (row - 1) * 4;
         return (baseNumber + position).toString();
@@ -179,10 +179,10 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber }: Bu
 
   const renderFloor = (floor: 'lower' | 'upper') => {
     const rows = [];
-    const rowCount = floor === 'upper' ? 2 : config.rows;
+    const rowCount = floor === 'upper' ? config.upperDeckRows : config.mainDeckRows;
 
     for (let row = 1; row <= rowCount; row++) {
-      const isLastRow = floor === 'lower' && row === config.rows;
+      const isLastRow = floor === 'lower' && row === config.mainDeckRows;
       rows.push(renderSeatRow(floor, row, isLastRow));
     }
 

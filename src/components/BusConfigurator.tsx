@@ -9,7 +9,8 @@ import { Plus, Minus, Bus, Users, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 
 export interface BusConfig {
-  rows: number;
+  mainDeckRows: number;
+  upperDeckRows: number;
   hasUpperDeck: boolean;
   lastRowSeats: 4 | 5;
   emptySpaces: Set<string>;
@@ -18,18 +19,27 @@ export interface BusConfig {
 
 const BusConfigurator = () => {
   const [config, setConfig] = useState<BusConfig>({
-    rows: 12,
+    mainDeckRows: 12,
+    upperDeckRows: 3,
     hasUpperDeck: false,
     lastRowSeats: 5,
     emptySpaces: new Set(),
     seatNumbers: new Map(),
   });
 
-  const updateRows = (increment: number) => {
-    const newRows = Math.max(1, Math.min(25, config.rows + increment));
-    setConfig(prev => ({ ...prev, rows: newRows }));
-    if (newRows !== config.rows) {
-      toast(`Bus rows updated to ${newRows}`);
+  const updateMainDeckRows = (increment: number) => {
+    const newRows = Math.max(1, Math.min(25, config.mainDeckRows + increment));
+    setConfig(prev => ({ ...prev, mainDeckRows: newRows }));
+    if (newRows !== config.mainDeckRows) {
+      toast(`Main deck rows updated to ${newRows}`);
+    }
+  };
+
+  const updateUpperDeckRows = (increment: number) => {
+    const newRows = Math.max(1, Math.min(15, config.upperDeckRows + increment));
+    setConfig(prev => ({ ...prev, upperDeckRows: newRows }));
+    if (newRows !== config.upperDeckRows) {
+      toast(`Upper deck rows updated to ${newRows}`);
     }
   };
 
@@ -65,10 +75,10 @@ const BusConfigurator = () => {
   };
 
   const getTotalSeats = () => {
-    const regularRows = config.rows - 1;
+    const regularRows = config.mainDeckRows - 1;
     const regularSeats = regularRows * 4;
     const lastRowSeats = config.lastRowSeats;
-    const upperDeckSeats = config.hasUpperDeck ? 8 : 0;
+    const upperDeckSeats = config.hasUpperDeck ? config.upperDeckRows * 4 : 0;
     return regularSeats + lastRowSeats + upperDeckSeats - config.emptySpaces.size;
   };
 
@@ -99,25 +109,25 @@ const BusConfigurator = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Rows Control */}
+                {/* Main Deck Rows Control */}
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Number of Rows</Label>
+                  <Label className="text-sm font-medium">Main Deck Rows</Label>
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => updateRows(-1)}
-                      disabled={config.rows <= 1}
+                      onClick={() => updateMainDeckRows(-1)}
+                      disabled={config.mainDeckRows <= 1}
                       className="h-8 w-8 p-0"
                     >
                       <Minus className="h-4 w-4" />
                     </Button>
                     <Input
                       type="number"
-                      value={config.rows}
+                      value={config.mainDeckRows}
                       onChange={(e) => {
                         const value = parseInt(e.target.value) || 1;
-                        setConfig(prev => ({ ...prev, rows: Math.max(1, Math.min(25, value)) }));
+                        setConfig(prev => ({ ...prev, mainDeckRows: Math.max(1, Math.min(25, value)) }));
                       }}
                       className="text-center h-8 w-16"
                       min="1"
@@ -126,14 +136,52 @@ const BusConfigurator = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => updateRows(1)}
-                      disabled={config.rows >= 25}
+                      onClick={() => updateMainDeckRows(1)}
+                      disabled={config.mainDeckRows >= 25}
                       className="h-8 w-8 p-0"
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
+
+                {/* Upper Deck Rows Control */}
+                {config.hasUpperDeck && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Upper Deck Rows</Label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateUpperDeckRows(-1)}
+                        disabled={config.upperDeckRows <= 1}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                      <Input
+                        type="number"
+                        value={config.upperDeckRows}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 1;
+                          setConfig(prev => ({ ...prev, upperDeckRows: Math.max(1, Math.min(15, value)) }));
+                        }}
+                        className="text-center h-8 w-16"
+                        min="1"
+                        max="15"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => updateUpperDeckRows(1)}
+                        disabled={config.upperDeckRows >= 15}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Double Decker Toggle */}
                 <div className="space-y-2">
