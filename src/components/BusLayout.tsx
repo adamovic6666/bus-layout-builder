@@ -2,6 +2,7 @@ import { BusConfig } from "./BusConfigurator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Layers, Car } from "lucide-react";
 import { useState } from "react";
 import { useDrop } from 'react-dnd';
@@ -87,7 +88,7 @@ const Seat = ({
   if (isEmpty) {
     return (
       <div 
-        className="w-8 h-8 border-2 border-dashed border-muted-foreground/30 rounded bg-muted/20 cursor-pointer"
+        className="w-20 h-8 border-2 border-dashed border-muted-foreground/30 rounded bg-muted/20 cursor-pointer"
         onClick={handleClick}
         title="Empty space (click to add seat)"
       />
@@ -108,7 +109,7 @@ const Seat = ({
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={handleSave}
           onKeyPress={handleKeyPress}
-          className="w-8 h-8 text-xs text-center p-0 border-2"
+          className="w-20 h-8 text-xs text-center p-1 border-2"
           autoFocus
         />
       ) : (
@@ -116,7 +117,7 @@ const Seat = ({
           variant="outline"
           size="sm"
           className={cn(
-            "w-8 h-8 p-0 text-xs font-medium border-2",
+            "w-20 h-8 p-1 text-xs font-medium border-2 truncate",
             isTourGuideSeat 
               ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200" 
               : assignedPerson
@@ -133,7 +134,7 @@ const Seat = ({
                 : `Seat ${displayNumber} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
           }
         >
-          {assignedPerson ? assignedPerson.name.charAt(0).toUpperCase() : displayNumber}
+          {assignedPerson ? assignedPerson.name : displayNumber}
         </Button>
       )}
     </div>
@@ -141,6 +142,33 @@ const Seat = ({
 };
 
 export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onToggleTourGuideSeat, onSeatAssignment }: BusLayoutProps) => {
+  const [activeDeck, setActiveDeck] = useState<'main' | 'upper'>('main');
+
+  // Calculate total main deck seats for numbering
+  const getMainDeckSeatNumber = (row: number, seatIndex: number) => {
+    let seatNumber = 0;
+    for (let r = 1; r < row; r++) {
+      const isLastRow = r === config.mainDeckRows;
+      seatNumber += isLastRow ? config.lastRowSeats : 4;
+    }
+    return seatNumber + seatIndex + 1;
+  };
+
+  // Calculate upper deck seat numbers continuing from main deck
+  const getUpperDeckSeatNumber = (row: number, seatIndex: number) => {
+    let totalMainSeats = 0;
+    for (let r = 1; r <= config.mainDeckRows; r++) {
+      const isLastRow = r === config.mainDeckRows;
+      totalMainSeats += isLastRow ? config.lastRowSeats : 4;
+    }
+    
+    let upperSeatNumber = totalMainSeats;
+    for (let r = 1; r < row; r++) {
+      upperSeatNumber += 4;
+    }
+    return upperSeatNumber + seatIndex + 1;
+  };
+
   const renderMainDeck = () => {
     const rows = [];
     for (let row = 1; row <= config.mainDeckRows; row++) {
@@ -152,8 +180,8 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
           <div className="text-xs text-muted-foreground w-6 text-center">{row}</div>
           <div className="flex gap-1">
             {Array.from({ length: seatsInRow }, (_, seatIndex) => {
-              const seatLetter = String.fromCharCode(65 + seatIndex);
-              const seatId = `${row}${seatLetter}`;
+              const seatNumber = getMainDeckSeatNumber(row, seatIndex);
+              const seatId = seatNumber.toString();
               return (
                 <Seat
                   key={seatId}
@@ -183,8 +211,8 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
           <div className="text-xs text-muted-foreground w-6 text-center">U{row}</div>
           <div className="flex gap-1">
             {Array.from({ length: 4 }, (_, seatIndex) => {
-              const seatLetter = String.fromCharCode(65 + seatIndex);
-              const seatId = `U${row}${seatLetter}`;
+              const seatNumber = getUpperDeckSeatNumber(row, seatIndex);
+              const seatId = seatNumber.toString();
               return (
                 <Seat
                   key={seatId}
@@ -204,39 +232,74 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
     return rows;
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Main Deck */}
-      <Card className="shadow-lg border-border/60">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-bus-secondary">
-            <Car className="h-5 w-5" />
-            Main Deck
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-gradient-to-b from-bus-floor to-bus-floor/80 p-4 rounded-lg border-2 border-bus-exterior">
-            {renderMainDeck()}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Upper Deck */}
-      {config.hasUpperDeck && (
+  if (!config.hasUpperDeck) {
+    // Single deck - no tabs needed
+    return (
+      <div className="space-y-6">
         <Card className="shadow-lg border-border/60">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-bus-secondary">
-              <Layers className="h-5 w-5" />
-              Upper Deck
+              <Car className="h-5 w-5" />
+              Main Deck
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="bg-gradient-to-b from-bus-floor to-bus-floor/80 p-4 rounded-lg border-2 border-bus-exterior">
-              {renderUpperDeck()}
+              {renderMainDeck()}
             </div>
           </CardContent>
         </Card>
-      )}
+      </div>
+    );
+  }
+
+  // Double deck - with tabs
+  return (
+    <div className="space-y-6">
+      <Tabs value={activeDeck} onValueChange={(value) => setActiveDeck(value as 'main' | 'upper')}>
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="main" className="flex items-center gap-2">
+            <Car className="h-4 w-4" />
+            Main Deck
+          </TabsTrigger>
+          <TabsTrigger value="upper" className="flex items-center gap-2">
+            <Layers className="h-4 w-4" />
+            Upper Deck
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="main">
+          <Card className="shadow-lg border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-bus-secondary">
+                <Car className="h-5 w-5" />
+                Main Deck
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-gradient-to-b from-bus-floor to-bus-floor/80 p-4 rounded-lg border-2 border-bus-exterior">
+                {renderMainDeck()}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="upper">
+          <Card className="shadow-lg border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-bus-secondary">
+                <Layers className="h-5 w-5" />
+                Upper Deck
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-gradient-to-b from-bus-floor to-bus-floor/80 p-4 rounded-lg border-2 border-bus-exterior">
+                {renderUpperDeck()}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
