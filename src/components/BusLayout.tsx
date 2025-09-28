@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Layers, Car } from "lucide-react";
 import { useState } from "react";
-import { useDrop } from 'react-dnd';
+import { useDrag, useDrop } from 'react-dnd';
 import { cn } from "@/lib/utils";
 
 interface BusLayoutProps {
@@ -39,10 +39,20 @@ const Seat = ({
 
   const isEmpty = config.emptySpaces.has(seatId);
   const customNumber = config.seatNumbers.get(seatId);
-  const displayResolved = customNumber || displayLabel;
+  const isNumeric = (val?: string) => !!val && /^\d+$/.test(val);
+  const displayResolved = isNumeric(customNumber) ? customNumber! : displayLabel;
   const isTourGuideSeat = config.tourGuideSeats.includes(seatId);
   const assignedPersonId = config.seatAssignments.get(seatId);
   const assignedPerson = assignedPersonId ? config.people.find(p => p.id === assignedPersonId) : null;
+
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: 'person',
+    item: assignedPerson ? { id: assignedPerson.id, name: assignedPerson.name } : { id: '', name: '' },
+    canDrag: !!assignedPerson,
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  }));
 
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'person',
@@ -99,10 +109,13 @@ const Seat = ({
 
   return (
     <div 
-      ref={drop} 
+      ref={(node) => {
+        if (node) drag(drop(node));
+      }} 
       className={cn(
         "relative",
-        isOver && !isEmpty && "ring-2 ring-primary ring-offset-1"
+        isOver && !isEmpty && "ring-2 ring-primary ring-offset-1",
+        isDragging && "opacity-60"
       )}
     >
       {isEditing ? (
@@ -196,7 +209,7 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
                     onToggleTourGuideSeat={onToggleTourGuideSeat}
                     onSeatAssignment={onSeatAssignment}
                   />
-                  {seatIndex === 1 && <div className="w-6" />}
+                  {seatIndex === 1 && (!isLastRow || seatsInRow !== 5) && <div className="w-20" />}
                 </div>
               );
             })}
@@ -231,7 +244,7 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
                     onToggleTourGuideSeat={onToggleTourGuideSeat}
                     onSeatAssignment={onSeatAssignment}
                   />
-                  {seatIndex === 1 && <div className="w-6" />}
+                  {seatIndex === 1 && <div className="w-20" />}
                 </div>
               );
             })}
