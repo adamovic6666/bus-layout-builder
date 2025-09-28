@@ -22,7 +22,8 @@ const Seat = ({
   onToggleEmptySpace, 
   onUpdateSeatNumber, 
   onToggleTourGuideSeat,
-  onSeatAssignment 
+  onSeatAssignment,
+  displayLabel
 }: {
   seatId: string;
   config: BusConfig;
@@ -30,6 +31,7 @@ const Seat = ({
   onUpdateSeatNumber: (seatId: string, number: string) => void;
   onToggleTourGuideSeat?: (seatId: string) => void;
   onSeatAssignment?: (seatId: string, personId: string | null) => void;
+  displayLabel: string;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
@@ -37,7 +39,7 @@ const Seat = ({
 
   const isEmpty = config.emptySpaces.has(seatId);
   const customNumber = config.seatNumbers.get(seatId);
-  const displayNumber = customNumber || seatId;
+  const displayResolved = customNumber || displayLabel;
   const isTourGuideSeat = config.tourGuideSeats.includes(seatId);
   const assignedPersonId = config.seatAssignments.get(seatId);
   const assignedPerson = assignedPersonId ? config.people.find(p => p.id === assignedPersonId) : null;
@@ -66,7 +68,7 @@ const Seat = ({
 
   const handleDoubleClick = () => {
     setIsEditing(true);
-    setEditValue(displayNumber);
+    setEditValue(displayResolved);
     setEditingSeat(seatId);
   };
 
@@ -128,13 +130,13 @@ const Seat = ({
           onDoubleClick={handleDoubleClick}
           title={
             isTourGuideSeat 
-              ? `Tour Guide Seat ${displayNumber} (Ctrl+click to remove)`
+              ? `Tour Guide Seat ${displayResolved} (Ctrl+click to remove)`
               : assignedPerson
-                ? `Seat ${displayNumber} - ${assignedPerson.name} (click to unassign)`
-                : `Seat ${displayNumber} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
+                ? `Seat ${displayResolved} - ${assignedPerson.name} (click to unassign)`
+                : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
           }
         >
-          {assignedPerson ? assignedPerson.name : displayNumber}
+          {assignedPerson ? assignedPerson.name : displayResolved}
         </Button>
       )}
     </div>
@@ -181,17 +183,21 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
           <div className="flex gap-1">
             {Array.from({ length: seatsInRow }, (_, seatIndex) => {
               const seatNumber = getMainDeckSeatNumber(row, seatIndex);
-              const seatId = seatNumber.toString();
+              const seatLetter = String.fromCharCode(65 + seatIndex);
+              const seatId = `${row}${seatLetter}`;
               return (
-                <Seat
-                  key={seatId}
-                  seatId={seatId}
-                  config={config}
-                  onToggleEmptySpace={onToggleEmptySpace}
-                  onUpdateSeatNumber={onUpdateSeatNumber}
-                  onToggleTourGuideSeat={onToggleTourGuideSeat}
-                  onSeatAssignment={onSeatAssignment}
-                />
+                <div key={seatId} className="flex items-center gap-1">
+                  <Seat
+                    seatId={seatId}
+                    displayLabel={seatNumber.toString()}
+                    config={config}
+                    onToggleEmptySpace={onToggleEmptySpace}
+                    onUpdateSeatNumber={onUpdateSeatNumber}
+                    onToggleTourGuideSeat={onToggleTourGuideSeat}
+                    onSeatAssignment={onSeatAssignment}
+                  />
+                  {seatIndex === 1 && <div className="w-6" />}
+                </div>
               );
             })}
           </div>
@@ -212,17 +218,21 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
           <div className="flex gap-1">
             {Array.from({ length: 4 }, (_, seatIndex) => {
               const seatNumber = getUpperDeckSeatNumber(row, seatIndex);
-              const seatId = seatNumber.toString();
+              const seatLetter = String.fromCharCode(65 + seatIndex);
+              const seatId = `U${row}${seatLetter}`;
               return (
-                <Seat
-                  key={seatId}
-                  seatId={seatId}
-                  config={config}
-                  onToggleEmptySpace={onToggleEmptySpace}
-                  onUpdateSeatNumber={onUpdateSeatNumber}
-                  onToggleTourGuideSeat={onToggleTourGuideSeat}
-                  onSeatAssignment={onSeatAssignment}
-                />
+                <div key={seatId} className="flex items-center gap-1">
+                  <Seat
+                    seatId={seatId}
+                    displayLabel={seatNumber.toString()}
+                    config={config}
+                    onToggleEmptySpace={onToggleEmptySpace}
+                    onUpdateSeatNumber={onUpdateSeatNumber}
+                    onToggleTourGuideSeat={onToggleTourGuideSeat}
+                    onSeatAssignment={onSeatAssignment}
+                  />
+                  {seatIndex === 1 && <div className="w-6" />}
+                </div>
               );
             })}
           </div>
