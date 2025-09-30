@@ -575,20 +575,35 @@ const BusConfigurator = () => {
                     : [...config.tourGuideSeats, seatId];
                   setConfig(prev => ({ ...prev, tourGuideSeats: newTourGuideSeats }));
                 }}
-                onSeatAssignment={(seatId, personId) => {
-                  const newAssignments = new Map(config.seatAssignments);
-                  if (personId) {
-                    // Remove person from any other seat first
-                    for (const [seat, person] of newAssignments.entries()) {
-                      if (person === personId) {
-                        newAssignments.delete(seat);
+                onSeatAssignment={(seatId, personId, fromSeatId) => {
+                  setConfig(prev => {
+                    const newAssignments = new Map(prev.seatAssignments);
+
+                    if (personId) {
+                      if (fromSeatId) {
+                        // Dragging from another seat: move or swap
+                        const targetOccupant = newAssignments.get(seatId);
+                        // Move dragged person to target
+                        newAssignments.set(seatId, personId);
+                        // Clear source seat
+                        newAssignments.delete(fromSeatId);
+                        // If target had occupant, move them to source (swap)
+                        if (targetOccupant && targetOccupant !== personId) {
+                          newAssignments.set(fromSeatId, targetOccupant);
+                        }
+                      } else {
+                        // Dragging from the list: ensure uniqueness, then assign
+                        for (const [s, p] of newAssignments.entries()) {
+                          if (p === personId) newAssignments.delete(s);
+                        }
+                        newAssignments.set(seatId, personId);
                       }
+                    } else {
+                      newAssignments.delete(seatId);
                     }
-                    newAssignments.set(seatId, personId);
-                  } else {
-                    newAssignments.delete(seatId);
-                  }
-                  setConfig(prev => ({ ...prev, seatAssignments: newAssignments }));
+
+                    return { ...prev, seatAssignments: newAssignments };
+                  });
                 }}
               />
             </div>

@@ -13,7 +13,7 @@ interface BusLayoutProps {
   onToggleEmptySpace: (seatId: string) => void;
   onUpdateSeatNumber: (seatId: string, number: string) => void;
   onToggleTourGuideSeat?: (seatId: string) => void;
-  onSeatAssignment?: (seatId: string, personId: string | null) => void;
+  onSeatAssignment?: (seatId: string, personId: string | null, fromSeatId?: string) => void;
 }
 
 const Seat = ({ 
@@ -30,7 +30,7 @@ const Seat = ({
   onToggleEmptySpace: (seatId: string) => void;
   onUpdateSeatNumber: (seatId: string, number: string) => void;
   onToggleTourGuideSeat?: (seatId: string) => void;
-  onSeatAssignment?: (seatId: string, personId: string | null) => void;
+  onSeatAssignment?: (seatId: string, personId: string | null, fromSeatId?: string) => void;
   displayLabel: string;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -47,7 +47,7 @@ const Seat = ({
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'person',
-    item: assignedPerson ? { id: assignedPerson.id, name: assignedPerson.name } : { id: '', name: '' },
+    item: assignedPerson ? { id: assignedPerson.id, name: assignedPerson.name, fromSeatId: seatId } : { id: '', name: '', fromSeatId: seatId },
     canDrag: !!assignedPerson,
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
@@ -56,9 +56,9 @@ const Seat = ({
 
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'person',
-    drop: (item: { id: string, name: string }) => {
+    drop: (item: { id: string; name: string; fromSeatId?: string }) => {
       if (onSeatAssignment && !isEmpty) {
-        onSeatAssignment(seatId, item.id);
+        onSeatAssignment(seatId, item.id, item.fromSeatId);
       }
     },
     collect: (monitor) => ({
@@ -159,30 +159,41 @@ const Seat = ({
 export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onToggleTourGuideSeat, onSeatAssignment }: BusLayoutProps) => {
   const [activeDeck, setActiveDeck] = useState<'main' | 'upper'>('main');
 
-  // Calculate total main deck seats for numbering
-  const getMainDeckSeatNumber = (row: number, seatIndex: number) => {
-    let seatNumber = 0;
-    for (let r = 1; r < row; r++) {
-      const isLastRow = r === config.mainDeckRows;
-      seatNumber += isLastRow ? config.lastRowSeats : 4;
-    }
-    return seatNumber + seatIndex + 1;
-  };
+  // Compute sequential seat numbering skipping empty spaces
+  const seatNumberMap = (() => {
+    let counter = 0;
+    const map = new Map<string, string>();
 
-  // Calculate upper deck seat numbers continuing from main deck
-  const getUpperDeckSeatNumber = (row: number, seatIndex: number) => {
-    let totalMainSeats = 0;
-    for (let r = 1; r <= config.mainDeckRows; r++) {
-      const isLastRow = r === config.mainDeckRows;
-      totalMainSeats += isLastRow ? config.lastRowSeats : 4;
+    // Main deck
+    for (let row = 1; row <= config.mainDeckRows; row++) {
+      const isLastRow = row === config.mainDeckRows;
+      const seatsInRow = isLastRow ? config.lastRowSeats : 4;
+      for (let seatIndex = 0; seatIndex < seatsInRow; seatIndex++) {
+        const seatLetter = String.fromCharCode(65 + seatIndex);
+        const sid = `${row}${seatLetter}`;
+        if (!config.emptySpaces.has(sid)) {
+          counter += 1;
+          map.set(sid, String(counter));
+        }
+      }
     }
-    
-    let upperSeatNumber = totalMainSeats;
-    for (let r = 1; r < row; r++) {
-      upperSeatNumber += 4;
+
+    // Upper deck (continues numbering)
+    if (config.hasUpperDeck) {
+      for (let row = 1; row <= config.upperDeckRows; row++) {
+        for (let seatIndex = 0; seatIndex < 4; seatIndex++) {
+          const seatLetter = String.fromCharCode(65 + seatIndex);
+          const sid = `U${row}${seatLetter}`;
+          if (!config.emptySpaces.has(sid)) {
+            counter += 1;
+            map.set(sid, String(counter));
+          }
+        }
+      }
     }
-    return upperSeatNumber + seatIndex + 1;
-  };
+
+    return map;
+  })();
 
   const renderMainDeck = () => {
     const rows = [];
@@ -195,14 +206,14 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
           <div className="text-xs text-muted-foreground w-6 text-center">{row}</div>
           <div className="flex gap-1">
             {Array.from({ length: seatsInRow }, (_, seatIndex) => {
-              const seatNumber = getMainDeckSeatNumber(row, seatIndex);
               const seatLetter = String.fromCharCode(65 + seatIndex);
               const seatId = `${row}${seatLetter}`;
+              const seatNumber = seatNumberMap.get(seatId) ?? "";
               return (
                 <div key={seatId} className="flex items-center gap-1">
                   <Seat
                     seatId={seatId}
-                    displayLabel={seatNumber.toString()}
+                    displayLabel={seatNumber}
                     config={config}
                     onToggleEmptySpace={onToggleEmptySpace}
                     onUpdateSeatNumber={onUpdateSeatNumber}
@@ -230,14 +241,14 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
           <div className="text-xs text-muted-foreground w-6 text-center">U{row}</div>
           <div className="flex gap-1">
             {Array.from({ length: 4 }, (_, seatIndex) => {
-              const seatNumber = getUpperDeckSeatNumber(row, seatIndex);
               const seatLetter = String.fromCharCode(65 + seatIndex);
               const seatId = `U${row}${seatLetter}`;
+              const seatNumber = seatNumberMap.get(seatId) ?? "";
               return (
                 <div key={seatId} className="flex items-center gap-1">
                   <Seat
                     seatId={seatId}
-                    displayLabel={seatNumber.toString()}
+                    displayLabel={seatNumber}
                     config={config}
                     onToggleEmptySpace={onToggleEmptySpace}
                     onUpdateSeatNumber={onUpdateSeatNumber}

@@ -52,11 +52,17 @@ export const PeopleManager = ({ people, onPeopleChange, onAutoAssign }: PeopleMa
         const importedPeople: Person[] = [];
         
         results.data.forEach((row: any) => {
-          if (row.name && row.name.trim()) {
+          // Normalize headers to support variants like "Name and Lastname" and "Date of Birth"
+          const rawName = row.name || row.Name || row["Name and Lastname"] || row["Full Name"] || row["Full name"];
+          const rawBirth = row.birth || row.Birth || row["Date of Birth"] || row["DOB"] || row["Birthdate"] || row["Birth Date"];
+
+          if (rawName && String(rawName).trim()) {
+            const name = String(rawName).trim();
+            const birthDate = rawBirth ? String(rawBirth).trim() : undefined;
             importedPeople.push({
               id: Date.now().toString() + Math.random(),
-              name: row.name.trim(),
-              birthDate: row.birth || row.birthDate || row.birth_date
+              name,
+              birthDate,
             });
           }
         });
@@ -151,7 +157,7 @@ export const PeopleManager = ({ people, onPeopleChange, onAutoAssign }: PeopleMa
             Import CSV/Excel
           </Button>
           <p className="text-xs text-muted-foreground text-center">
-            File should have "name" and "birth" columns
+            Supported headers: name/birth or "Name and Lastname"/"Date of Birth"
           </p>
         </div>
 
