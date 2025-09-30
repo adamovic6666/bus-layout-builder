@@ -115,14 +115,20 @@ const BusConfigurator = () => {
     const availableSeats = getAvailableSeats();
     const newAssignments = new Map<string, string>();
     
-    config.people.forEach((person, index) => {
+    // Sort people by birth date (oldest first) before assigning
+    const sortedPeople = [...config.people].sort((a, b) => {
+      if (!a.birthDate || !b.birthDate) return 0;
+      return new Date(a.birthDate).getTime() - new Date(b.birthDate).getTime();
+    });
+    
+    sortedPeople.forEach((person, index) => {
       if (index < availableSeats.length) {
         newAssignments.set(availableSeats[index], person.id);
       }
     });
     
     setConfig(prev => ({ ...prev, seatAssignments: newAssignments }));
-    toast(`Assigned ${Math.min(config.people.length, availableSeats.length)} people to seats`);
+    toast(`Assigned ${Math.min(sortedPeople.length, availableSeats.length)} people to seats`);
   };
 
   const getAvailableSeats = (): string[] => {
@@ -354,7 +360,7 @@ const BusConfigurator = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Controls Panel */}
           <div className="lg:col-span-1 space-y-4">
             {/* Bus Information */}
@@ -518,13 +524,6 @@ const BusConfigurator = () => {
               totalSeats={getTotalSeats()}
             />
 
-            {/* People Manager */}
-            <PeopleManager
-              people={config.people}
-              onPeopleChange={(people) => setConfig(prev => ({ ...prev, people }))}
-              onAutoAssign={autoAssignPeople}
-            />
-
             {/* Action Buttons */}
             <Card className="shadow-lg border-border/60">
               <CardHeader className="pb-3">
@@ -554,16 +553,16 @@ const BusConfigurator = () => {
                 <CardTitle className="text-sm text-bus-secondary">Instructions</CardTitle>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground space-y-2">
-                <p>• Click seats to mark as empty spaces (doors, facilities)</p>
-                <p>• Click seats to select tour guide positions</p>
+                <p>• Click seats to mark as empty spaces</p>
+                <p>• Ctrl+Click seats for tour guide positions</p>
                 <p>• Double-click seat numbers to edit them</p>
-                <p>• Drag people from the list to assign seats</p>
-                <p>• Use controls to adjust bus configuration</p>
+                <p>• Drag people from right panel to assign seats</p>
+                <p>• Import CSV/Excel with name and birth columns</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Bus Layout */}
+          {/* Bus Layout and People Manager */}
           <div className="lg:col-span-3">
             <div id="bus-layout-print">
               <BusLayout
@@ -593,6 +592,15 @@ const BusConfigurator = () => {
                 }}
               />
             </div>
+          </div>
+
+          {/* People Manager - Right Side */}
+          <div className="lg:col-span-1">
+            <PeopleManager
+              people={config.people}
+              onPeopleChange={(people) => setConfig(prev => ({ ...prev, people }))}
+              onAutoAssign={autoAssignPeople}
+            />
           </div>
         </div>
       </div>

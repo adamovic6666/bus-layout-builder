@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Users, Plus, X, UserPlus, Shuffle } from "lucide-react";
+import { Users, Plus, X, UserPlus, Shuffle, Upload, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
+import Papa from "papaparse";
+import { DraggablePerson } from "./DraggablePerson";
 
 export interface Person {
   id: string;
   name: string;
+  birthDate?: string;
 }
 
 interface PeopleManagerProps {
@@ -19,6 +22,7 @@ interface PeopleManagerProps {
 
 export const PeopleManager = ({ people, onPeopleChange, onAutoAssign }: PeopleManagerProps) => {
   const [newPersonName, setNewPersonName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addPerson = () => {
     if (newPersonName.trim()) {
@@ -30,6 +34,52 @@ export const PeopleManager = ({ people, onPeopleChange, onAutoAssign }: PeopleMa
       setNewPersonName("");
       toast(`${newPerson.name} added to the list`);
     }
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    if (!['csv', 'xlsx', 'xls'].includes(fileExtension || '')) {
+      toast.error("Please upload a CSV or Excel file");
+      return;
+    }
+
+    Papa.parse(file, {
+      header: true,
+      complete: (results) => {
+        const importedPeople: Person[] = [];
+        
+        results.data.forEach((row: any) => {
+          if (row.name && row.name.trim()) {
+            importedPeople.push({
+              id: Date.now().toString() + Math.random(),
+              name: row.name.trim(),
+              birthDate: row.birth || row.birthDate || row.birth_date
+            });
+          }
+        });
+
+        // Sort by birth date (oldest first)
+        importedPeople.sort((a, b) => {
+          if (!a.birthDate || !b.birthDate) return 0;
+          return new Date(a.birthDate).getTime() - new Date(b.birthDate).getTime();
+        });
+
+        onPeopleChange([...people, ...importedPeople]);
+        toast.success(`Imported ${importedPeople.length} people`);
+        
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      },
+      error: (error) => {
+        console.error('CSV parsing error:', error);
+        toast.error("Failed to parse file");
+      }
+    });
   };
 
   const removePerson = (id: string) => {
@@ -44,6 +94,15 @@ export const PeopleManager = ({ people, onPeopleChange, onAutoAssign }: PeopleMa
     if (e.key === 'Enter') {
       addPerson();
     }
+  };
+
+  const sortPeopleByBirth = () => {
+    const sorted = [...people].sort((a, b) => {
+      if (!a.birthDate || !b.birthDate) return 0;
+      return new Date(a.birthDate).getTime() - new Date(b.birthDate).getTime();
+    });
+    onPeopleChange(sorted);
+    toast.success("People sorted by birth date (oldest first)");
   };
 
   return (
@@ -73,20 +132,53 @@ export const PeopleManager = ({ people, onPeopleChange, onAutoAssign }: PeopleMa
           </Button>
         </div>
 
-        {/* Auto Assign Button */}
-        {people.length > 0 && (
-          <Button 
-            onClick={onAutoAssign}
-            variant="outline" 
+        {/* Import CSV/Excel */}
+        <div className="space-y-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <Button
+            variant="outline"
             className="w-full"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
           >
-            <Shuffle className="h-4 w-4 mr-2" />
-            Auto Assign to Seats
+            <Upload className="h-4 w-4 mr-2" />
+            Import CSV/Excel
           </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            File should have "name" and "birth" columns
+          </p>
+        </div>
+
+        {/* Action Buttons */}
+        {people.length > 0 && (
+          <div className="flex gap-2">
+            <Button 
+              onClick={onAutoAssign}
+              variant="outline" 
+              className="flex-1"
+              size="sm"
+            >
+              <Shuffle className="h-4 w-4 mr-2" />
+              Auto Assign
+            </Button>
+            <Button 
+              onClick={sortPeopleByBirth}
+              variant="outline"
+              size="sm"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+            </Button>
+          </div>
         )}
 
-        {/* People List */}
-        <div className="space-y-2 max-h-40 overflow-y-auto">
+        {/* People List - Draggable */}
+        <div className="space-y-2 max-h-96 overflow-y-auto">
           {people.length === 0 ? (
             <div className="text-center text-muted-foreground py-4">
               <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -94,19 +186,11 @@ export const PeopleManager = ({ people, onPeopleChange, onAutoAssign }: PeopleMa
             </div>
           ) : (
             people.map((person) => (
-              <div key={person.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md">
-                <Badge variant="secondary" className="flex-1 justify-start">
-                  {person.name}
-                </Badge>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removePerson(person.id)}
-                  className="h-6 w-6 p-0 hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
+              <DraggablePerson
+                key={person.id}
+                person={person}
+                onRemove={removePerson}
+              />
             ))
           )}
         </div>

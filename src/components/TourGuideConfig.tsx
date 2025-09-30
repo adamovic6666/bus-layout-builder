@@ -11,6 +11,19 @@ interface TourGuideConfigProps {
 }
 
 export const TourGuideConfig = ({ tourGuideSeats, onTourGuideSeatsChange, totalSeats }: TourGuideConfigProps) => {
+  const getSeatDisplayLabel = (seatId: string): string => {
+    const match = seatId.match(/^(\d+)([A-Z])$/);
+    if (!match) return seatId;
+    
+    const row = parseInt(match[1]);
+    const letter = match[2];
+    const seatIndex = letter.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+    
+    // Calculate numeric seat number: (row-1) * 4 + seatIndex + 1
+    const numericSeat = (row - 1) * 4 + seatIndex + 1;
+    return numericSeat.toString();
+  };
+
   const addPresetSeats = (preset: string) => {
     let newSeats: string[] = [];
     
@@ -24,20 +37,19 @@ export const TourGuideConfig = ({ tourGuideSeats, onTourGuideSeatsChange, totalS
       case 'seats-3-4':
         newSeats = ['1C', '1D'];
         break;
-      case 'custom':
-        // For now, just add the first 2 seats as an example
-        newSeats = ['1A', '1B'];
-        break;
     }
     
     onTourGuideSeatsChange(newSeats);
-    toast(`Tour guide seats set to: ${newSeats.join(', ')}`);
+    
+    // Display with numeric labels
+    const displayLabels = newSeats.map(getSeatDisplayLabel).join(', ');
+    toast(`Tour guide seats set to: Seats ${displayLabels}`);
   };
 
   const removeTourGuideSeat = (seatId: string) => {
     const newSeats = tourGuideSeats.filter(seat => seat !== seatId);
     onTourGuideSeatsChange(newSeats);
-    toast(`Removed ${seatId} from tour guide seats`);
+    toast(`Removed Seat ${getSeatDisplayLabel(seatId)} from tour guide seats`);
   };
 
   const clearAllTourGuideSeats = () => {
@@ -64,7 +76,7 @@ export const TourGuideConfig = ({ tourGuideSeats, onTourGuideSeatsChange, totalS
               onClick={() => addPresetSeats('seats-1-2')}
               className="text-xs"
             >
-              Seats 1A, 1B
+              Seats 1, 2
             </Button>
             <Button 
               variant="outline" 
@@ -72,7 +84,7 @@ export const TourGuideConfig = ({ tourGuideSeats, onTourGuideSeatsChange, totalS
               onClick={() => addPresetSeats('seats-3-4')}
               className="text-xs"
             >
-              Seats 1C, 1D
+              Seats 3, 4
             </Button>
             <Button 
               variant="outline" 
@@ -80,7 +92,7 @@ export const TourGuideConfig = ({ tourGuideSeats, onTourGuideSeatsChange, totalS
               onClick={() => addPresetSeats('front-4')}
               className="text-xs col-span-2"
             >
-              All Front Row (1A-1D)
+              All Front Row
             </Button>
           </div>
         </div>
@@ -102,7 +114,7 @@ export const TourGuideConfig = ({ tourGuideSeats, onTourGuideSeatsChange, totalS
             <div className="flex flex-wrap gap-1">
               {tourGuideSeats.map((seatId) => (
                 <Badge key={seatId} variant="secondary" className="flex items-center gap-1">
-                  {seatId}
+                  Seat {getSeatDisplayLabel(seatId)}
                   <Button
                     variant="ghost"
                     size="sm"
