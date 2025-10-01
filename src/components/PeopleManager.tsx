@@ -7,6 +7,8 @@ import { Users, Plus, X, UserPlus, Shuffle, Upload, FileSpreadsheet } from "luci
 import { toast } from "sonner";
 import Papa from "papaparse";
 import { DraggablePerson } from "./DraggablePerson";
+import { useDrop } from 'react-dnd';
+import { cn } from "@/lib/utils";
 
 export interface Person {
   id: string;
@@ -18,11 +20,25 @@ interface PeopleManagerProps {
   people: Person[];
   onPeopleChange: (people: Person[]) => void;
   onAutoAssign: () => void;
+  onUnassignToPeople?: (personId: string, seatId: string) => void;
 }
 
-export const PeopleManager = ({ people, onPeopleChange, onAutoAssign }: PeopleManagerProps) => {
+export const PeopleManager = ({ people, onPeopleChange, onAutoAssign, onUnassignToPeople }: PeopleManagerProps) => {
   const [newPersonName, setNewPersonName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [{ isOver }, drop] = useDrop(() => ({
+    accept: 'person',
+    drop: (item: { id: string; name: string; fromSeatId?: string }) => {
+      // Only accept drops from seats (has fromSeatId)
+      if (item.fromSeatId && onUnassignToPeople) {
+        onUnassignToPeople(item.id, item.fromSeatId);
+      }
+    },
+    collect: (monitor) => ({
+      isOver: monitor.isOver() && monitor.getItem()?.fromSeatId, // Only show visual feedback for seat drops
+    }),
+  }));
 
   const addPerson = () => {
     if (newPersonName.trim()) {
@@ -112,7 +128,7 @@ export const PeopleManager = ({ people, onPeopleChange, onAutoAssign }: PeopleMa
   };
 
   return (
-    <Card className="shadow-lg border-border/60">
+    <Card ref={drop} className={cn("shadow-lg border-border/60 transition-colors", isOver && "ring-2 ring-primary")}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-bus-secondary">
           <Users className="h-5 w-5" />

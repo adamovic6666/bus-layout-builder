@@ -121,14 +121,38 @@ const BusConfigurator = () => {
       return new Date(a.birthDate).getTime() - new Date(b.birthDate).getTime();
     });
     
+    const assignedPeopleIds = new Set<string>();
     sortedPeople.forEach((person, index) => {
       if (index < availableSeats.length) {
         newAssignments.set(availableSeats[index], person.id);
+        assignedPeopleIds.add(person.id);
       }
     });
     
-    setConfig(prev => ({ ...prev, seatAssignments: newAssignments }));
+    // Remove assigned people from the panel
+    const remainingPeople = config.people.filter(p => !assignedPeopleIds.has(p.id));
+    
+    setConfig(prev => ({ ...prev, seatAssignments: newAssignments, people: remainingPeople }));
     toast(`Assigned ${Math.min(sortedPeople.length, availableSeats.length)} people to seats`);
+  };
+
+  const handleUnassignToPeople = (personId: string, seatId: string) => {
+    // Find the person in config
+    const person = config.people.find(p => p.id === personId);
+    if (!person) return;
+
+    // Remove from seat assignments
+    const newAssignments = new Map(config.seatAssignments);
+    newAssignments.delete(seatId);
+    
+    // Add back to people list
+    setConfig(prev => ({ 
+      ...prev, 
+      seatAssignments: newAssignments,
+      people: [...prev.people, person]
+    }));
+    
+    toast.success(`${person.name} moved back to people list`);
   };
 
   const getAvailableSeats = (): string[] => {
@@ -592,11 +616,14 @@ const BusConfigurator = () => {
                           newAssignments.set(fromSeatId, targetOccupant);
                         }
                       } else {
-                        // Dragging from the list: ensure uniqueness, then assign
+                        // Dragging from the list: ensure uniqueness, remove from list, then assign
                         for (const [s, p] of newAssignments.entries()) {
                           if (p === personId) newAssignments.delete(s);
                         }
+                        // Remove person from the people list
+                        const newPeople = prev.people.filter(p => p.id !== personId);
                         newAssignments.set(seatId, personId);
+                        return { ...prev, seatAssignments: newAssignments, people: newPeople };
                       }
                     } else {
                       newAssignments.delete(seatId);
@@ -615,6 +642,7 @@ const BusConfigurator = () => {
               people={config.people}
               onPeopleChange={(people) => setConfig(prev => ({ ...prev, people }))}
               onAutoAssign={autoAssignPeople}
+              onUnassignToPeople={handleUnassignToPeople}
             />
           </div>
         </div>
