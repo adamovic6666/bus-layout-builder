@@ -113,7 +113,7 @@ const BusConfigurator = () => {
 
   const autoAssignPeople = () => {
     const availableSeats = getAvailableSeats();
-    const newAssignments = new Map<string, string>();
+    const newAssignments = new Map(config.seatAssignments);
     
     // Sort people by birth date (oldest first) before assigning
     const sortedPeople = [...config.people].sort((a, b) => {
