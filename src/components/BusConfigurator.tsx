@@ -114,45 +114,36 @@ const BusConfigurator = () => {
   const autoAssignPeople = () => {
     const availableSeats = getAvailableSeats();
     const newAssignments = new Map(config.seatAssignments);
-    
-    // Sort people by birth date (oldest first) before assigning
-    const sortedPeople = [...config.people].sort((a, b) => {
+    // Only consider free seats (not already assigned)
+    const freeSeats = availableSeats.filter(seat => !newAssignments.has(seat));
+    // Only consider unassigned people
+    const assignedIds = new Set(newAssignments.values());
+    const unassignedPeople = config.people.filter(p => !assignedIds.has(p.id));
+    // Sort by birth date (oldest first)
+    const sortedPeople = [...unassignedPeople].sort((a, b) => {
       if (!a.birthDate || !b.birthDate) return 0;
       return new Date(a.birthDate).getTime() - new Date(b.birthDate).getTime();
     });
-    
-    const assignedPeopleIds = new Set<string>();
-    sortedPeople.forEach((person, index) => {
-      if (index < availableSeats.length) {
-        newAssignments.set(availableSeats[index], person.id);
-        assignedPeopleIds.add(person.id);
-      }
-    });
-    
-    // Remove assigned people from the panel
-    const remainingPeople = config.people.filter(p => !assignedPeopleIds.has(p.id));
-    
-    setConfig(prev => ({ ...prev, seatAssignments: newAssignments, people: remainingPeople }));
-    toast(`Assigned ${Math.min(sortedPeople.length, availableSeats.length)} people to seats`);
+    const assignCount = Math.min(sortedPeople.length, freeSeats.length);
+    for (let i = 0; i < assignCount; i++) {
+      newAssignments.set(freeSeats[i], sortedPeople[i].id);
+    }
+    setConfig(prev => ({ ...prev, seatAssignments: newAssignments }));
+    toast(`Assigned ${assignCount} people to seats`);
   };
 
   const handleUnassignToPeople = (personId: string, seatId: string) => {
-    // Find the person in config
-    const person = config.people.find(p => p.id === personId);
-    if (!person) return;
-
     // Remove from seat assignments
     const newAssignments = new Map(config.seatAssignments);
     newAssignments.delete(seatId);
     
-    // Add back to people list
     setConfig(prev => ({ 
       ...prev, 
-      seatAssignments: newAssignments,
-      people: [...prev.people, person]
+      seatAssignments: newAssignments
     }));
     
-    toast.success(`${person.name} moved back to people list`);
+    const person = config.people.find(p => p.id === personId);
+    toast.success(`${person ? person.name : 'Passenger'} moved back to people list`);
   };
 
   const getAvailableSeats = (): string[] => {
@@ -616,14 +607,12 @@ const BusConfigurator = () => {
                           newAssignments.set(fromSeatId, targetOccupant);
                         }
                       } else {
-                        // Dragging from the list: ensure uniqueness, remove from list, then assign
+                        // Dragging from the list: ensure uniqueness, then assign
                         for (const [s, p] of newAssignments.entries()) {
                           if (p === personId) newAssignments.delete(s);
                         }
-                        // Remove person from the people list
-                        const newPeople = prev.people.filter(p => p.id !== personId);
                         newAssignments.set(seatId, personId);
-                        return { ...prev, seatAssignments: newAssignments, people: newPeople };
+                        return { ...prev, seatAssignments: newAssignments };
                       }
                     } else {
                       newAssignments.delete(seatId);
@@ -640,6 +629,7 @@ const BusConfigurator = () => {
           <div className="lg:col-span-1">
             <PeopleManager
               people={config.people}
+              assignedIds={new Set(config.seatAssignments.values())}
               onPeopleChange={(people) => setConfig(prev => ({ ...prev, people }))}
               onAutoAssign={autoAssignPeople}
               onUnassignToPeople={handleUnassignToPeople}

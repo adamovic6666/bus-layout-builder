@@ -18,12 +18,13 @@ export interface Person {
 
 interface PeopleManagerProps {
   people: Person[];
+  assignedIds?: Set<string>;
   onPeopleChange: (people: Person[]) => void;
   onAutoAssign: () => void;
   onUnassignToPeople?: (personId: string, seatId: string) => void;
 }
 
-export const PeopleManager = ({ people, onPeopleChange, onAutoAssign, onUnassignToPeople }: PeopleManagerProps) => {
+export const PeopleManager = ({ people, assignedIds, onPeopleChange, onAutoAssign, onUnassignToPeople }: PeopleManagerProps) => {
   const [newPersonName, setNewPersonName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -39,6 +40,9 @@ export const PeopleManager = ({ people, onPeopleChange, onAutoAssign, onUnassign
       isOver: monitor.isOver() && monitor.getItem()?.fromSeatId, // Only show visual feedback for seat drops
     }),
   }));
+
+  const assigned = assignedIds ?? new Set<string>();
+  const visiblePeople = people.filter(p => !assigned.has(p.id));
 
   const addPerson = () => {
     if (newPersonName.trim()) {
@@ -132,7 +136,7 @@ export const PeopleManager = ({ people, onPeopleChange, onAutoAssign, onUnassign
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-bus-secondary">
           <Users className="h-5 w-5" />
-          People ({people.length})
+          People ({visiblePeople.length})
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -178,7 +182,7 @@ export const PeopleManager = ({ people, onPeopleChange, onAutoAssign, onUnassign
         </div>
 
         {/* Action Buttons */}
-        {people.length > 0 && (
+        {visiblePeople.length > 0 && (
           <div className="flex gap-2">
             <Button 
               onClick={onAutoAssign}
@@ -201,13 +205,13 @@ export const PeopleManager = ({ people, onPeopleChange, onAutoAssign, onUnassign
 
         {/* People List - Draggable */}
         <div className="space-y-2 max-h-96 overflow-y-auto">
-          {people.length === 0 ? (
+          {visiblePeople.length === 0 ? (
             <div className="text-center text-muted-foreground py-4">
               <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No people added yet</p>
             </div>
           ) : (
-            people.map((person) => (
+            visiblePeople.map((person) => (
               <DraggablePerson
                 key={person.id}
                 person={person}
