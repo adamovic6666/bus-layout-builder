@@ -119,7 +119,7 @@ const Seat = ({
           autoFocus
         />
       ) : (
-        <Button
+        <div
           ref={(node) => {
             if (!node) return;
             if (assignedPerson) {
@@ -128,31 +128,37 @@ const Seat = ({
               drop(node);
             }
           }}
-          variant="outline"
-          size="sm"
           className={cn(
-            "w-20 h-8 p-1 text-xs font-medium border-2 truncate",
-            isOver && !isEmpty && "ring-2 ring-primary ring-offset-1",
+            "inline-block",
+            isOver && !isEmpty && "ring-2 ring-primary ring-offset-1 rounded",
             isDragging && "opacity-60",
-            assignedPerson && "cursor-move",
-            isTourGuideSeat 
-              ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200" 
-              : assignedPerson
-                ? "border-green-500 bg-green-100 text-green-800 hover:bg-green-200"
-                : "border-seat-border bg-seat-available hover:bg-seat-hover"
+            assignedPerson && "cursor-move"
           )}
-          onClick={handleClick}
-          onDoubleClick={handleDoubleClick}
-          title={
-            isTourGuideSeat 
-              ? `Tour Guide Seat ${displayResolved} (Ctrl+click to remove)`
-              : assignedPerson
-                ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
-                : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
-          }
         >
-          {assignedPerson ? assignedPerson.name : displayResolved}
-        </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              "w-20 h-8 p-1 text-xs font-medium border-2 truncate",
+              isTourGuideSeat 
+                ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200" 
+                : assignedPerson
+                  ? "border-green-500 bg-green-100 text-green-800 hover:bg-green-200"
+                  : "border-seat-border bg-seat-available hover:bg-seat-hover"
+            )}
+            onClick={handleClick}
+            onDoubleClick={handleDoubleClick}
+            title={
+              isTourGuideSeat 
+                ? `Tour Guide Seat ${displayResolved} (Ctrl+click to remove)`
+                : assignedPerson
+                  ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
+                  : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
+            }
+          >
+            {assignedPerson ? assignedPerson.name : displayResolved}
+          </Button>
+        </div>
       )}
     </>
   );
