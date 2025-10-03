@@ -7,7 +7,7 @@ import { Users, Plus, X, UserPlus, Shuffle, Upload, FileSpreadsheet } from "luci
 import { toast } from "sonner";
 import Papa from "papaparse";
 import { DraggablePerson } from "./DraggablePerson";
-import { useDrop } from 'react-dnd';
+import { useDroppable } from '@dnd-kit/core';
 import { cn } from "@/lib/utils";
 
 export interface Person {
@@ -28,18 +28,10 @@ export const PeopleManager = ({ people, assignedIds, onPeopleChange, onAutoAssig
   const [newPersonName, setNewPersonName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [{ isOver }, drop] = useDrop(() => ({
-    accept: 'person',
-    drop: (item: { id: string; name: string; fromSeatId?: string }) => {
-      // Only accept drops from seats (has fromSeatId)
-      if (item.fromSeatId && onUnassignToPeople) {
-        onUnassignToPeople(item.id, item.fromSeatId);
-      }
-    },
-    collect: (monitor) => ({
-      isOver: monitor.isOver() && monitor.getItem()?.fromSeatId, // Only show visual feedback for seat drops
-    }),
-  }));
+  const { isOver, setNodeRef } = useDroppable({
+    id: 'people-drop',
+    data: { accepts: ['person'] },
+  });
 
   const assigned = assignedIds ?? new Set<string>();
   const visiblePeople = people.filter(p => !assigned.has(p.id));
@@ -132,7 +124,7 @@ export const PeopleManager = ({ people, assignedIds, onPeopleChange, onAutoAssig
   };
 
   return (
-    <Card ref={drop} className={cn("shadow-lg border-border/60 transition-colors", isOver && "ring-2 ring-primary")}>
+    <Card ref={setNodeRef} className={cn("shadow-lg border-border/60 transition-colors", isOver && "ring-2 ring-primary")}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-bus-secondary">
           <Users className="h-5 w-5" />

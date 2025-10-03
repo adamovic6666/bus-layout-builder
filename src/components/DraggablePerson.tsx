@@ -1,9 +1,10 @@
-import { useDrag } from 'react-dnd';
+import { useDraggable } from '@dnd-kit/core';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import { Person } from "./PeopleManager";
 import { cn } from "@/lib/utils";
+import { CSS } from '@dnd-kit/utilities';
 
 interface DraggablePersonProps {
   person: Person;
@@ -11,17 +12,19 @@ interface DraggablePersonProps {
 }
 
 export const DraggablePerson = ({ person, onRemove }: DraggablePersonProps) => {
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'person',
-    item: { id: person.id, name: person.name },
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-  }));
+  const { attributes, listeners, setNodeRef, isDragging, transform } = useDraggable({
+    id: `person-${person.id}`,
+    data: { type: 'person', personId: person.id },
+  });
+
+  const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
 
   return (
     <div 
-      ref={drag}
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      style={style}
       className={cn(
         "flex items-center justify-between p-2 bg-muted/50 rounded-md cursor-move transition-opacity hover:bg-muted",
         isDragging && "opacity-50"

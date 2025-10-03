@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Layers, Car } from "lucide-react";
 import { useState } from "react";
-import { useDrag, useDrop } from 'react-dnd';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { cn } from "@/lib/utils";
+import { CSS } from '@dnd-kit/utilities';
 
 interface BusLayoutProps {
   config: BusConfig;
@@ -45,30 +46,21 @@ const Seat = ({
   const assignedPersonId = config.seatAssignments.get(seatId);
   const assignedPerson = assignedPersonId ? config.people.find(p => p.id === assignedPersonId) : null;
 
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'person',
-    item: () => assignedPerson ? { id: assignedPerson.id, name: assignedPerson.name, fromSeatId: seatId } : { id: '', name: '', fromSeatId: seatId },
-    canDrag: !!assignedPerson,
-    collect: (monitor) => ({
-      isDragging: monitor.isDragging(),
-    }),
-    options: { dropEffect: 'move' },
-  }));
+  const hasPerson = !!assignedPerson;
 
-  const [{ isOver }, drop] = useDrop(() => ({
-    accept: 'person',
-    drop: (item: { id: string; name: string; fromSeatId?: string }) => {
-      if (onSeatAssignment && !isEmpty) {
-        onSeatAssignment(seatId, item.id, item.fromSeatId);
-      }
-    },
-    collect: (monitor) => ({
-      isOver: monitor.isOver(),
-    }),
-  }));
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging, transform } = useDraggable({
+    id: `seat-${seatId}-person`,
+    disabled: !hasPerson,
+    data: hasPerson ? { type: 'person', personId: assignedPerson!.id, fromSeatId: seatId } : undefined,
+  });
+
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: seatId,
+    data: { accepts: ['person'] },
+  });
 
   const handleClick = (e: React.MouseEvent) => {
-    if (isDragging) return;
+    if (transform) return; // if dragging, ignore clicks
     if (assignedPerson) return; // don't toggle when occupied; use drag instead
     if (e.ctrlKey || e.metaKey) {
       onToggleTourGuideSeat?.(seatId);
@@ -121,14 +113,7 @@ const Seat = ({
         />
       ) : (
         <div
-          ref={(node) => {
-            if (!node) return;
-            if (assignedPerson) {
-              drag(drop(node));
-            } else {
-              drop(node);
-            }
-          }}
+          ref={setDropRef}
           className={cn(
             "inline-block",
             isOver && !isEmpty && "ring-2 ring-primary ring-offset-1 rounded",
@@ -136,29 +121,62 @@ const Seat = ({
             assignedPerson && "cursor-move"
           )}
         >
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(
-              "w-20 h-8 p-1 text-xs font-medium border-2 truncate",
-              isTourGuideSeat 
-                ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200" 
-                : assignedPerson
-                  ? "border-green-500 bg-green-100 text-green-800 hover:bg-green-200"
-                  : "border-seat-border bg-seat-available hover:bg-seat-hover"
-            )}
-            onClick={handleClick}
-            onDoubleClick={handleDoubleClick}
-            title={
-              isTourGuideSeat 
-                ? `Tour Guide Seat ${displayResolved} (Ctrl+click to remove)`
-                : assignedPerson
-                  ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
-                  : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
-            }
-          >
-            {assignedPerson ? assignedPerson.name : displayResolved}
-          </Button>
+          {assignedPerson ? (
+            <div
+              ref={setDragRef}
+              {...listeners}
+              {...attributes}
+              style={transform ? { transform: CSS.Translate.toString(transform) } : undefined}
+            >
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "w-20 h-8 p-1 text-xs font-medium border-2 truncate",
+                  isTourGuideSeat 
+                    ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200" 
+                    : assignedPerson
+                      ? "border-green-500 bg-green-100 text-green-800 hover:bg-green-200"
+                      : "border-seat-border bg-seat-available hover:bg-seat-hover"
+                )}
+                onClick={handleClick}
+                onDoubleClick={handleDoubleClick}
+                title={
+                  isTourGuideSeat 
+                    ? `Tour Guide Seat ${displayResolved} (Ctrl+click to remove)`
+                    : assignedPerson
+                      ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
+                      : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
+                }
+              >
+                {assignedPerson ? assignedPerson.name : displayResolved}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "w-20 h-8 p-1 text-xs font-medium border-2 truncate",
+                isTourGuideSeat 
+                  ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200" 
+                  : assignedPerson
+                    ? "border-green-500 bg-green-100 text-green-800 hover:bg-green-200"
+                    : "border-seat-border bg-seat-available hover:bg-seat-hover"
+              )}
+              onClick={handleClick}
+              onDoubleClick={handleDoubleClick}
+              title={
+                isTourGuideSeat 
+                  ? `Tour Guide Seat ${displayResolved} (Ctrl+click to remove)`
+                  : assignedPerson
+                    ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
+                    : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
+              }
+            >
+              {assignedPerson ? assignedPerson.name : displayResolved}
+            </Button>
+          )}
         </div>
       )}
     </>
