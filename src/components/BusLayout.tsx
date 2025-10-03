@@ -47,11 +47,12 @@ const Seat = ({
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'person',
-    item: assignedPerson ? { id: assignedPerson.id, name: assignedPerson.name, fromSeatId: seatId } : { id: '', name: '', fromSeatId: seatId },
+    item: () => assignedPerson ? { id: assignedPerson.id, name: assignedPerson.name, fromSeatId: seatId } : { id: '', name: '', fromSeatId: seatId },
     canDrag: !!assignedPerson,
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
+    options: { dropEffect: 'move' },
   }));
 
   const [{ isOver }, drop] = useDrop(() => ({
@@ -67,10 +68,10 @@ const Seat = ({
   }));
 
   const handleClick = (e: React.MouseEvent) => {
+    if (isDragging) return;
+    if (assignedPerson) return; // don't toggle when occupied; use drag instead
     if (e.ctrlKey || e.metaKey) {
-      if (onToggleTourGuideSeat) {
-        onToggleTourGuideSeat(seatId);
-      }
+      onToggleTourGuideSeat?.(seatId);
     } else {
       onToggleEmptySpace(seatId);
     }
