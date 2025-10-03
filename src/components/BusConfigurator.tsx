@@ -357,8 +357,56 @@ const BusConfigurator = () => {
     return regularSeats + lastRowSeats + upperDeckSeats - config.emptySpaces.size;
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+    
+    const data: any = active.data.current;
+    if (!data || data.type !== 'person') return;
+
+    const personId: string = data.personId;
+    const fromSeatId: string | undefined = data.fromSeatId;
+    const overId = String(over.id);
+
+    // Drop to people panel
+    if (overId === 'people-drop') {
+      if (fromSeatId) {
+        handleUnassignToPeople(personId, fromSeatId);
+      }
+      return;
+    }
+
+    // Drop to a seat
+    const targetSeatId = overId;
+
+    // Validate seat is available (not empty space, not tour guide)
+    if (config.emptySpaces.has(targetSeatId) || config.tourGuideSeats.includes(targetSeatId)) {
+      return;
+    }
+
+    setConfig(prev => {
+      const newAssignments = new Map(prev.seatAssignments);
+      if (fromSeatId) {
+        // Seat to seat: swap if occupied
+        const targetOccupant = newAssignments.get(targetSeatId);
+        newAssignments.set(targetSeatId, personId);
+        newAssignments.delete(fromSeatId);
+        if (targetOccupant && targetOccupant !== personId) {
+          newAssignments.set(fromSeatId, targetOccupant);
+        }
+      } else {
+        // From people list: ensure uniqueness then assign
+        for (const [s, p] of newAssignments.entries()) {
+          if (p === personId) newAssignments.delete(s);
+        }
+        newAssignments.set(targetSeatId, personId);
+      }
+      return { ...prev, seatAssignments: newAssignments };
+    });
+  };
+
   return (
-    <DndProvider backend={HTML5Backend}>
+    <DndContext onDragEnd={handleDragEnd}>
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-accent/5 p-4">
         <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
@@ -637,7 +685,7 @@ const BusConfigurator = () => {
         </div>
       </div>
     </div>
-    </DndProvider>
+    </DndContext>
   );
 };
 
