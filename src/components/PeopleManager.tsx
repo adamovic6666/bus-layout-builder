@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Users, Plus, X, UserPlus, Shuffle, Upload, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
+import * as XLSX from 'xlsx';
 import { DraggablePerson } from "./DraggablePerson";
 import { useDroppable } from '@dnd-kit/core';
 import { cn } from "@/lib/utils";
@@ -14,6 +15,7 @@ export interface Person {
   id: string;
   name: string;
   birthDate?: string;
+  notes?: string;
 }
 
 interface PeopleManagerProps {
@@ -58,26 +60,56 @@ export const PeopleManager = ({ people, assignedIds, onPeopleChange, onAutoAssig
       return;
     }
 
-    Papa.parse(file, {
-      header: true,
-      complete: (results) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
         const importedPeople: Person[] = [];
         
-        results.data.forEach((row: any) => {
-          // Normalize headers to support variants like "Name and Lastname" and "Date of Birth"
-          const rawName = row.name || row.Name || row["Name and Lastname"] || row["Full Name"] || row["Full name"];
-          const rawBirth = row.birth || row.Birth || row["Date of Birth"] || row["DOB"] || row["Birthdate"] || row["Birth Date"];
+        if (fileExtension === 'csv') {
+          // Parse CSV
+          const text = e.target?.result as string;
+          Papa.parse(text, {
+            header: true,
+            complete: (results) => {
+              results.data.forEach((row: any) => {
+                const rawName = row.name || row.Name || row["Name and Lastname"] || row["Full Name"] || row["Full name"];
+                const rawBirth = row.birth || row.Birth || row["Date of Birth"] || row["DOB"] || row["Birthdate"] || row["Birth Date"];
+                const rawNotes = row.notes || row.Notes || row.Note || row.note;
 
-          if (rawName && String(rawName).trim()) {
-            const name = String(rawName).trim();
-            const birthDate = rawBirth ? String(rawBirth).trim() : undefined;
-            importedPeople.push({
-              id: Date.now().toString() + Math.random(),
-              name,
-              birthDate,
-            });
-          }
-        });
+                if (rawName && String(rawName).trim()) {
+                  importedPeople.push({
+                    id: Date.now().toString() + Math.random(),
+                    name: String(rawName).trim(),
+                    birthDate: rawBirth ? String(rawBirth).trim() : undefined,
+                    notes: rawNotes ? String(rawNotes).trim() : undefined,
+                  });
+                }
+              });
+            }
+          });
+        } else {
+          // Parse Excel
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+          
+          jsonData.forEach((row: any) => {
+            const rawName = row.name || row.Name || row["Name and Lastname"] || row["Full Name"] || row["Full name"];
+            const rawBirth = row.birth || row.Birth || row["Date of Birth"] || row["DOB"] || row["Birthdate"] || row["Birth Date"];
+            const rawNotes = row.notes || row.Notes || row.Note || row.note;
+
+            if (rawName && String(rawName).trim()) {
+              importedPeople.push({
+                id: Date.now().toString() + Math.random(),
+                name: String(rawName).trim(),
+                birthDate: rawBirth ? String(rawBirth).trim() : undefined,
+                notes: rawNotes ? String(rawNotes).trim() : undefined,
+              });
+            }
+          });
+        }
 
         // Sort by birth date (oldest first)
         importedPeople.sort((a, b) => {
@@ -92,12 +124,17 @@ export const PeopleManager = ({ people, assignedIds, onPeopleChange, onAutoAssig
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
-      },
-      error: (error) => {
-        console.error('CSV parsing error:', error);
+      } catch (error) {
+        console.error('File parsing error:', error);
         toast.error("Failed to parse file");
       }
-    });
+    };
+
+    if (fileExtension === 'csv') {
+      reader.readAsText(file);
+    } else {
+      reader.readAsArrayBuffer(file);
+    }
   };
 
   const removePerson = (id: string) => {
@@ -169,7 +206,7 @@ export const PeopleManager = ({ people, assignedIds, onPeopleChange, onAutoAssig
             Import CSV/Excel
           </Button>
           <p className="text-xs text-muted-foreground text-center">
-            Supported headers: name/birth or "Name and Lastname"/"Date of Birth"
+            Supported headers: name, birth, notes (or variants)
           </p>
         </div>
 

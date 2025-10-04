@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
-import { DndContext, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragOverlay } from '@dnd-kit/core';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BusLayout } from "./BusLayout";
 import { PeopleManager, Person } from "./PeopleManager";
 import { TourGuideConfig } from "./TourGuideConfig";
-import { Plus, Minus, Bus, Users, Settings2, Save, Share, Download, Printer } from "lucide-react";
+import { Plus, Minus, Bus, Users, Settings2, Save, Share, Download, Printer, DoorOpen, Table } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import html2canvas from 'html2canvas';
@@ -26,6 +27,10 @@ export interface BusConfig {
   seatNumbers: Map<string, string>;
   people: Person[];
   seatAssignments: Map<string, string>; // seatId -> personId
+  entranceCount: 1 | 2;
+  entranceRows: number[];
+  hasTablesOnMainDeck: boolean;
+  tableRows: number[];
 }
 
 const BusConfigurator = () => {
@@ -41,9 +46,14 @@ const BusConfigurator = () => {
     seatNumbers: new Map(),
     people: [],
     seatAssignments: new Map(),
+    entranceCount: 1,
+    entranceRows: [1],
+    hasTablesOnMainDeck: false,
+    tableRows: [],
   });
 
   const [savedConfigId, setSavedConfigId] = useState<string | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   // Log the complete configuration whenever it changes
   useEffect(() => {
@@ -358,6 +368,7 @@ const BusConfigurator = () => {
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragId(null);
     const { active, over } = event;
     if (!over) return;
     
@@ -405,8 +416,18 @@ const BusConfigurator = () => {
     });
   };
 
+  const activePerson = activeDragId ? config.people.find(p => p.id === activeDragId) : null;
+
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext 
+      onDragEnd={handleDragEnd}
+      onDragStart={(event) => {
+        const data: any = event.active.data.current;
+        if (data?.type === 'person') {
+          setActiveDragId(data.personId);
+        }
+      }}
+    >
       <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-accent/5 p-4">
         <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
@@ -560,6 +581,114 @@ const BusConfigurator = () => {
                   </Button>
                 </div>
 
+                {/* Entrance Configuration */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <DoorOpen className="h-4 w-4" />
+                    Entrance Configuration
+                  </Label>
+                  <Select
+                    value={String(config.entranceCount)}
+                    onValueChange={(value) => {
+                      const count = parseInt(value) as 1 | 2;
+                      setConfig(prev => ({
+                        ...prev,
+                        entranceCount: count,
+                        entranceRows: count === 1 ? [1] : [1, Math.floor(config.mainDeckRows / 2)]
+                      }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Single Entrance</SelectItem>
+                      <SelectItem value="2">Double Entrance</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {config.entranceCount === 1 && (
+                    <Input
+                      type="number"
+                      value={config.entranceRows[0]}
+                      onChange={(e) => {
+                        const row = Math.max(1, Math.min(config.mainDeckRows, parseInt(e.target.value) || 1));
+                        setConfig(prev => ({ ...prev, entranceRows: [row] }));
+                      }}
+                      className="text-center"
+                      min="1"
+                      max={config.mainDeckRows}
+                      placeholder="Entrance row"
+                    />
+                  )}
+                  {config.entranceCount === 2 && (
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        value={config.entranceRows[0]}
+                        onChange={(e) => {
+                          const row = Math.max(1, Math.min(config.mainDeckRows, parseInt(e.target.value) || 1));
+                          setConfig(prev => ({ ...prev, entranceRows: [row, prev.entranceRows[1]] }));
+                        }}
+                        className="text-center"
+                        min="1"
+                        max={config.mainDeckRows}
+                        placeholder="Row 1"
+                      />
+                      <Input
+                        type="number"
+                        value={config.entranceRows[1]}
+                        onChange={(e) => {
+                          const row = Math.max(1, Math.min(config.mainDeckRows, parseInt(e.target.value) || 1));
+                          setConfig(prev => ({ ...prev, entranceRows: [prev.entranceRows[0], row] }));
+                        }}
+                        className="text-center"
+                        min="1"
+                        max={config.mainDeckRows}
+                        placeholder="Row 2"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Tables Configuration (Double Decker Only) */}
+                {config.hasUpperDeck && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <Table className="h-4 w-4" />
+                      Tables on Main Deck
+                    </Label>
+                    <Button
+                      variant={config.hasTablesOnMainDeck ? "default" : "outline"}
+                      onClick={() => {
+                        setConfig(prev => ({
+                          ...prev,
+                          hasTablesOnMainDeck: !prev.hasTablesOnMainDeck,
+                          tableRows: !prev.hasTablesOnMainDeck ? [1] : []
+                        }));
+                      }}
+                      className="w-full"
+                      size="sm"
+                    >
+                      {config.hasTablesOnMainDeck ? "Tables Enabled" : "No Tables"}
+                    </Button>
+                    {config.hasTablesOnMainDeck && (
+                      <Input
+                        type="text"
+                        value={config.tableRows.join(', ')}
+                        onChange={(e) => {
+                          const rows = e.target.value
+                            .split(',')
+                            .map(s => parseInt(s.trim()))
+                            .filter(n => !isNaN(n) && n >= 1 && n <= config.mainDeckRows);
+                          setConfig(prev => ({ ...prev, tableRows: rows }));
+                        }}
+                        placeholder="e.g. 1, 2, 3"
+                        className="text-center text-xs"
+                      />
+                    )}
+                  </div>
+                )}
+
                 {/* Statistics */}
                 <div className="pt-2 border-t space-y-2">
                   <div className="flex items-center justify-between text-sm">
@@ -683,8 +812,16 @@ const BusConfigurator = () => {
             />
           </div>
         </div>
+        </div>
       </div>
-    </div>
+      
+      <DragOverlay>
+        {activePerson && (
+          <div className="w-24 h-10 p-2 bg-green-100 border-2 border-green-500 rounded text-xs font-medium text-green-800 flex items-center justify-center shadow-lg">
+            {activePerson.name}
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
   );
 };

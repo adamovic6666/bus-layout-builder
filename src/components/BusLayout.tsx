@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Layers, Car } from "lucide-react";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Layers, Car, StickyNote } from "lucide-react";
 import { useState } from "react";
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { cn } from "@/lib/utils";
@@ -93,7 +94,7 @@ const Seat = ({
   if (isEmpty) {
     return (
       <div 
-        className="w-20 h-8 border-2 border-dashed border-muted-foreground/30 rounded bg-muted/20 cursor-pointer"
+        className="w-24 h-10 border-2 border-dashed border-muted-foreground/30 rounded bg-muted/20 cursor-pointer"
         onClick={handleClick}
         title="Empty space (click to add seat)"
       />
@@ -108,7 +109,7 @@ const Seat = ({
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={handleSave}
           onKeyPress={handleKeyPress}
-          className="w-20 h-8 text-xs text-center p-1 border-2"
+          className="w-24 h-10 text-xs text-center p-1 border-2"
           autoFocus
         />
       ) : (
@@ -117,47 +118,68 @@ const Seat = ({
           className={cn(
             "inline-block",
             isOver && !isEmpty && "ring-2 ring-primary ring-offset-1 rounded",
-            isDragging && "opacity-60",
+            isDragging && "opacity-30",
             assignedPerson && "cursor-move"
           )}
         >
           {assignedPerson ? (
-            <div
-              ref={setDragRef}
-              {...listeners}
-              {...attributes}
-              style={transform ? { transform: CSS.Translate.toString(transform) } : undefined}
-            >
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "w-20 h-8 p-1 text-xs font-medium border-2 truncate",
-                  isTourGuideSeat 
-                    ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200" 
-                    : assignedPerson
-                      ? "border-green-500 bg-green-100 text-green-800 hover:bg-green-200"
-                      : "border-seat-border bg-seat-available hover:bg-seat-hover"
-                )}
-                onClick={handleClick}
-                onDoubleClick={handleDoubleClick}
-                title={
-                  isTourGuideSeat 
-                    ? `Tour Guide Seat ${displayResolved} (Ctrl+click to remove)`
-                    : assignedPerson
-                      ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
-                      : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
-                }
-              >
-                {assignedPerson ? assignedPerson.name : displayResolved}
-              </Button>
-            </div>
+            <HoverCard openDelay={200}>
+              <HoverCardTrigger asChild>
+                <div
+                  ref={setDragRef}
+                  {...listeners}
+                  {...attributes}
+                  style={transform ? { transform: CSS.Translate.toString(transform) } : undefined}
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "w-24 h-10 p-1 text-xs font-medium border-2 truncate relative",
+                      isTourGuideSeat 
+                        ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200" 
+                        : assignedPerson
+                          ? "border-green-500 bg-green-100 text-green-800 hover:bg-green-200"
+                          : "border-seat-border bg-seat-available hover:bg-seat-hover"
+                    )}
+                    onClick={handleClick}
+                    onDoubleClick={handleDoubleClick}
+                    title={
+                      isTourGuideSeat 
+                        ? `Tour Guide Seat ${displayResolved} (Ctrl+click to remove)`
+                        : assignedPerson
+                          ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
+                          : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
+                    }
+                  >
+                    {assignedPerson.name}
+                    {assignedPerson.notes && (
+                      <StickyNote className="h-3 w-3 absolute top-0.5 right-0.5 text-amber-600" />
+                    )}
+                  </Button>
+                </div>
+              </HoverCardTrigger>
+              <HoverCardContent className="w-64">
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">{assignedPerson.name}</h4>
+                  <div className="text-xs space-y-1">
+                    <p><span className="font-medium">Seat:</span> {displayResolved}</p>
+                    {assignedPerson.birthDate && (
+                      <p><span className="font-medium">Birth Date:</span> {new Date(assignedPerson.birthDate).toLocaleDateString()}</p>
+                    )}
+                    {assignedPerson.notes && (
+                      <p><span className="font-medium">Notes:</span> {assignedPerson.notes}</p>
+                    )}
+                  </div>
+                </div>
+              </HoverCardContent>
+            </HoverCard>
           ) : (
             <Button
               variant="outline"
               size="sm"
               className={cn(
-                "w-20 h-8 p-1 text-xs font-medium border-2 truncate",
+                "w-24 h-10 p-1 text-xs font-medium border-2 truncate",
                 isTourGuideSeat 
                   ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200" 
                   : assignedPerson
@@ -247,7 +269,7 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
                     onToggleTourGuideSeat={onToggleTourGuideSeat}
                     onSeatAssignment={onSeatAssignment}
                   />
-                  {seatIndex === 1 && (!isLastRow || seatsInRow !== 5) && <div className="w-20" />}
+                  {seatIndex === 1 && (!isLastRow || seatsInRow !== 5) && <div className="w-24" />}
                 </div>
               );
             })}
@@ -282,7 +304,7 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
                     onToggleTourGuideSeat={onToggleTourGuideSeat}
                     onSeatAssignment={onSeatAssignment}
                   />
-                  {seatIndex === 1 && <div className="w-20" />}
+                  {seatIndex === 1 && <div className="w-24" />}
                 </div>
               );
             })}
