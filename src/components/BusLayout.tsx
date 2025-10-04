@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import { BusConfig } from "./BusConfigurator";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Layers, Car, StickyNote, DoorOpen } from "lucide-react";
-import { useState } from "react";
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { cn } from "@/lib/utils";
 import { CSS } from '@dnd-kit/utilities';
@@ -260,18 +260,38 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
               const seatId = `${row}${seatLetter}`;
               const seatNumber = seatNumberMap.get(seatId) ?? "";
               
-              // Skip middle seats (B and C) for entrance rows
-              if (isEntranceRow && (seatIndex === 1 || seatIndex === 2)) {
-                if (seatIndex === 1) {
-                  return (
-                    <div key={seatId} className="flex items-center gap-1">
-                      <div className="w-24 h-10 flex items-center justify-center border-2 border-dashed border-primary/50 bg-primary/5 rounded">
-                        <DoorOpen className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="w-24" />
+              // Skip middle seats (B and C) for entrance rows and show entrance indicator
+              if (isEntranceRow && seatIndex === 1) {
+                return (
+                  <React.Fragment key={`entrance-${row}`}>
+                    <Seat
+                      seatId={`${row}A`}
+                      displayLabel={seatNumberMap.get(`${row}A`) ?? ""}
+                      config={config}
+                      onToggleEmptySpace={onToggleEmptySpace}
+                      onUpdateSeatNumber={onUpdateSeatNumber}
+                      onToggleTourGuideSeat={onToggleTourGuideSeat}
+                      onSeatAssignment={onSeatAssignment}
+                    />
+                    <div className="w-[208px] h-10 flex items-center justify-center gap-2 bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded text-xs text-muted-foreground font-medium">
+                      <DoorOpen className="h-4 w-4" />
+                      ENTRANCE
                     </div>
-                  );
-                }
+                    <Seat
+                      seatId={`${row}D`}
+                      displayLabel={seatNumberMap.get(`${row}D`) ?? ""}
+                      config={config}
+                      onToggleEmptySpace={onToggleEmptySpace}
+                      onUpdateSeatNumber={onUpdateSeatNumber}
+                      onToggleTourGuideSeat={onToggleTourGuideSeat}
+                      onSeatAssignment={onSeatAssignment}
+                    />
+                  </React.Fragment>
+                );
+              }
+              
+              // Skip B, C, D seats in entrance rows as they're handled above
+              if (isEntranceRow && (seatIndex === 1 || seatIndex === 2 || seatIndex === 3)) {
                 return null;
               }
               
