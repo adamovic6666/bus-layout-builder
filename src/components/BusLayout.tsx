@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { Layers, Car, StickyNote } from "lucide-react";
+import { Layers, Car, StickyNote, DoorOpen } from "lucide-react";
 import { useState } from "react";
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { cn } from "@/lib/utils";
@@ -249,6 +249,7 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
     for (let row = 1; row <= config.mainDeckRows; row++) {
       const isLastRow = row === config.mainDeckRows;
       const seatsInRow = isLastRow ? config.lastRowSeats : 4;
+      const isEntranceRow = config.entranceRows?.includes(row);
       
       rows.push(
         <div key={row} className="flex justify-center gap-2 mb-2">
@@ -258,6 +259,22 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
               const seatLetter = String.fromCharCode(65 + seatIndex);
               const seatId = `${row}${seatLetter}`;
               const seatNumber = seatNumberMap.get(seatId) ?? "";
+              
+              // Skip middle seats (B and C) for entrance rows
+              if (isEntranceRow && (seatIndex === 1 || seatIndex === 2)) {
+                if (seatIndex === 1) {
+                  return (
+                    <div key={seatId} className="flex items-center gap-1">
+                      <div className="w-24 h-10 flex items-center justify-center border-2 border-dashed border-primary/50 bg-primary/5 rounded">
+                        <DoorOpen className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="w-24" />
+                    </div>
+                  );
+                }
+                return null;
+              }
+              
               return (
                 <div key={seatId} className="flex items-center gap-1">
                   <Seat
@@ -269,7 +286,7 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
                     onToggleTourGuideSeat={onToggleTourGuideSeat}
                     onSeatAssignment={onSeatAssignment}
                   />
-                  {seatIndex === 1 && (!isLastRow || seatsInRow !== 5) && <div className="w-24" />}
+                  {seatIndex === 1 && (!isLastRow || seatsInRow !== 5) && !isEntranceRow && <div className="w-24" />}
                 </div>
               );
             })}
