@@ -219,13 +219,17 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
       const isEntranceRow = config.entranceRows?.includes(row);
       const seatsInRow = isLastRow ? config.lastRowSeats : 4;
       
+      // For entrance rows, reserve numbering for B and C BEFORE actual seats
+      if (isEntranceRow) {
+        counter += 2;
+      }
+      
       for (let seatIndex = 0; seatIndex < seatsInRow; seatIndex++) {
         const seatLetter = String.fromCharCode(65 + seatIndex);
         const sid = `${row}${seatLetter}`;
         
-        // For entrance rows, skip B and C but count them in numbering
+        // Skip the entrance placeholders (B and C)
         if (isEntranceRow && (seatLetter === 'B' || seatLetter === 'C')) {
-          counter += 1; // Count the entrance position
           continue;
         }
         
