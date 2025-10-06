@@ -228,7 +228,7 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
         const seatLetter = String.fromCharCode(65 + seatIndex);
         const sid = `${row}${seatLetter}`;
         
-        // Skip the entrance placeholders (B and C)
+        // Skip the entrance placeholders (B and C) without incrementing further
         if (isEntranceRow && (seatLetter === 'B' || seatLetter === 'C')) {
           continue;
         }
@@ -238,7 +238,7 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
           map.set(sid, String(counter));
         }
       }
-    }
+      }
 
     // Upper deck (continues numbering)
     if (config.hasUpperDeck) {
