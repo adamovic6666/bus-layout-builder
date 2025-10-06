@@ -273,15 +273,6 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
               if (isEntranceRow && seatIndex === 1) {
                 return (
                   <React.Fragment key={`entrance-${row}`}>
-                    <Seat
-                      seatId={`${row}A`}
-                      displayLabel={seatNumberMap.get(`${row}A`) ?? ""}
-                      config={config}
-                      onToggleEmptySpace={onToggleEmptySpace}
-                      onUpdateSeatNumber={onUpdateSeatNumber}
-                      onToggleTourGuideSeat={onToggleTourGuideSeat}
-                      onSeatAssignment={onSeatAssignment}
-                    />
                     <div className="w-[208px] h-10 flex items-center justify-center gap-2 bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded text-xs text-muted-foreground font-medium">
                       <DoorOpen className="h-4 w-4" />
                       ENTRANCE
