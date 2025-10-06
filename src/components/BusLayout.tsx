@@ -4,35 +4,47 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 import { Layers, Car, StickyNote, DoorOpen } from "lucide-react";
-import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { CSS } from '@dnd-kit/utilities';
+import { CSS } from "@dnd-kit/utilities";
 
 interface BusLayoutProps {
   config: BusConfig;
   onToggleEmptySpace: (seatId: string) => void;
   onUpdateSeatNumber: (seatId: string, number: string) => void;
   onToggleTourGuideSeat?: (seatId: string) => void;
-  onSeatAssignment?: (seatId: string, personId: string | null, fromSeatId?: string) => void;
+  onSeatAssignment?: (
+    seatId: string,
+    personId: string | null,
+    fromSeatId?: string
+  ) => void;
 }
 
-const Seat = ({ 
-  seatId, 
-  config, 
-  onToggleEmptySpace, 
-  onUpdateSeatNumber, 
+const Seat = ({
+  seatId,
+  config,
+  onToggleEmptySpace,
+  onUpdateSeatNumber,
   onToggleTourGuideSeat,
   onSeatAssignment,
-  displayLabel
+  displayLabel,
 }: {
   seatId: string;
   config: BusConfig;
   onToggleEmptySpace: (seatId: string) => void;
   onUpdateSeatNumber: (seatId: string, number: string) => void;
   onToggleTourGuideSeat?: (seatId: string) => void;
-  onSeatAssignment?: (seatId: string, personId: string | null, fromSeatId?: string) => void;
+  onSeatAssignment?: (
+    seatId: string,
+    personId: string | null,
+    fromSeatId?: string
+  ) => void;
   displayLabel: string;
 }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -42,22 +54,34 @@ const Seat = ({
   const isEmpty = config.emptySpaces.has(seatId);
   const customNumber = config.seatNumbers.get(seatId);
   const isNumeric = (val?: string) => !!val && /^\d+$/.test(val);
-  const displayResolved = isNumeric(customNumber) ? customNumber! : displayLabel;
+  const displayResolved = isNumeric(customNumber)
+    ? customNumber!
+    : displayLabel;
   const isTourGuideSeat = config.tourGuideSeats.includes(seatId);
   const assignedPersonId = config.seatAssignments.get(seatId);
-  const assignedPerson = assignedPersonId ? config.people.find(p => p.id === assignedPersonId) : null;
+  const assignedPerson = assignedPersonId
+    ? config.people.find((p) => p.id === assignedPersonId)
+    : null;
 
   const hasPerson = !!assignedPerson;
 
-  const { attributes, listeners, setNodeRef: setDragRef, isDragging, transform } = useDraggable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDragRef,
+    isDragging,
+    transform,
+  } = useDraggable({
     id: `seat-${seatId}-person`,
     disabled: !hasPerson,
-    data: hasPerson ? { type: 'person', personId: assignedPerson!.id, fromSeatId: seatId } : undefined,
+    data: hasPerson
+      ? { type: "person", personId: assignedPerson!.id, fromSeatId: seatId }
+      : undefined,
   });
 
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: seatId,
-    data: { accepts: ['person'] },
+    data: { accepts: ["person"] },
   });
 
   const handleClick = (e: React.MouseEvent) => {
@@ -83,9 +107,9 @@ const Seat = ({
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       handleSave();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       setIsEditing(false);
       setEditingSeat(null);
     }
@@ -93,7 +117,7 @@ const Seat = ({
 
   if (isEmpty) {
     return (
-      <div 
+      <div
         className="w-24 h-10 border-2 border-dashed border-muted-foreground/30 rounded bg-muted/20 cursor-pointer"
         onClick={handleClick}
         title="Empty space (click to add seat)"
@@ -129,27 +153,31 @@ const Seat = ({
                   ref={setDragRef}
                   {...listeners}
                   {...attributes}
-                  style={transform ? { transform: CSS.Translate.toString(transform) } : undefined}
+                  style={
+                    transform
+                      ? { transform: CSS.Translate.toString(transform) }
+                      : undefined
+                  }
                 >
                   <Button
                     variant="outline"
                     size="sm"
                     className={cn(
                       "w-24 h-10 p-1 text-xs font-medium border-2 truncate relative",
-                      isTourGuideSeat 
-                        ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200" 
+                      isTourGuideSeat
+                        ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200"
                         : assignedPerson
-                          ? "border-green-500 bg-green-100 text-green-800 hover:bg-green-200"
-                          : "border-seat-border bg-seat-available hover:bg-seat-hover"
+                        ? "border-green-500 bg-green-100 text-green-800 hover:bg-green-200"
+                        : "border-seat-border bg-seat-available hover:bg-seat-hover"
                     )}
                     onClick={handleClick}
                     onDoubleClick={handleDoubleClick}
                     title={
-                      isTourGuideSeat 
+                      isTourGuideSeat
                         ? `Tour Guide Seat ${displayResolved} (Ctrl+click to remove)`
                         : assignedPerson
-                          ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
-                          : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
+                        ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
+                        : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
                     }
                   >
                     {assignedPerson.name}
@@ -161,14 +189,27 @@ const Seat = ({
               </HoverCardTrigger>
               <HoverCardContent className="w-64">
                 <div className="space-y-2">
-                  <h4 className="text-sm font-semibold">{assignedPerson.name}</h4>
+                  <h4 className="text-sm font-semibold">
+                    {assignedPerson.name}
+                  </h4>
                   <div className="text-xs space-y-1">
-                    <p><span className="font-medium">Seat:</span> {displayResolved}</p>
+                    <p>
+                      <span className="font-medium">Seat:</span>{" "}
+                      {displayResolved}
+                    </p>
                     {assignedPerson.birthDate && (
-                      <p><span className="font-medium">Birth Date:</span> {new Date(assignedPerson.birthDate).toLocaleDateString()}</p>
+                      <p>
+                        <span className="font-medium">Birth Date:</span>{" "}
+                        {new Date(
+                          assignedPerson.birthDate
+                        ).toLocaleDateString()}
+                      </p>
                     )}
                     {assignedPerson.notes && (
-                      <p><span className="font-medium">Notes:</span> {assignedPerson.notes}</p>
+                      <p>
+                        <span className="font-medium">Notes:</span>{" "}
+                        {assignedPerson.notes}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -180,20 +221,20 @@ const Seat = ({
               size="sm"
               className={cn(
                 "w-24 h-10 p-1 text-xs font-medium border-2 truncate",
-                isTourGuideSeat 
-                  ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200" 
+                isTourGuideSeat
+                  ? "border-amber-500 bg-amber-100 text-amber-800 hover:bg-amber-200"
                   : assignedPerson
-                    ? "border-green-500 bg-green-100 text-green-800 hover:bg-green-200"
-                    : "border-seat-border bg-seat-available hover:bg-seat-hover"
+                  ? "border-green-500 bg-green-100 text-green-800 hover:bg-green-200"
+                  : "border-seat-border bg-seat-available hover:bg-seat-hover"
               )}
               onClick={handleClick}
               onDoubleClick={handleDoubleClick}
               title={
-                isTourGuideSeat 
+                isTourGuideSeat
                   ? `Tour Guide Seat ${displayResolved} (Ctrl+click to remove)`
                   : assignedPerson
-                    ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
-                    : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
+                  ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
+                  : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, double-click to edit)`
               }
             >
               {assignedPerson ? assignedPerson.name : displayResolved}
@@ -205,8 +246,14 @@ const Seat = ({
   );
 };
 
-export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onToggleTourGuideSeat, onSeatAssignment }: BusLayoutProps) => {
-  const [activeDeck, setActiveDeck] = useState<'main' | 'upper'>('main');
+export const BusLayout = ({
+  config,
+  onToggleEmptySpace,
+  onUpdateSeatNumber,
+  onToggleTourGuideSeat,
+  onSeatAssignment,
+}: BusLayoutProps) => {
+  const [activeDeck, setActiveDeck] = useState<"main" | "upper">("main");
 
   // Compute sequential seat numbering skipping empty spaces
   const seatNumberMap = (() => {
@@ -218,27 +265,22 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
       const isLastRow = row === config.mainDeckRows;
       const isEntranceRow = config.entranceRows?.includes(row);
       const seatsInRow = isLastRow ? config.lastRowSeats : 4;
-      
-      // For entrance rows, reserve numbering for B and C BEFORE actual seats
-      if (isEntranceRow) {
-        counter += 2;
-      }
-      
+
       for (let seatIndex = 0; seatIndex < seatsInRow; seatIndex++) {
         const seatLetter = String.fromCharCode(65 + seatIndex);
         const sid = `${row}${seatLetter}`;
-        
-        // Skip the entrance placeholders (B and C) without incrementing further
-        if (isEntranceRow && (seatLetter === 'B' || seatLetter === 'C')) {
+
+        // Skip seats C and D in entrance rows (entrance replaces them)
+        if (isEntranceRow && (seatLetter === "C" || seatLetter === "D")) {
           continue;
         }
-        
+
         if (!config.emptySpaces.has(sid)) {
           counter += 1;
           map.set(sid, String(counter));
         }
       }
-      }
+    }
 
     // Upper deck (continues numbering)
     if (config.hasUpperDeck) {
@@ -263,42 +305,36 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
       const isLastRow = row === config.mainDeckRows;
       const seatsInRow = isLastRow ? config.lastRowSeats : 4;
       const isEntranceRow = config.entranceRows?.includes(row);
-      
+
       rows.push(
         <div key={row} className="flex justify-center gap-2 mb-2">
-          <div className="text-xs text-muted-foreground w-6 text-center">{row}</div>
+          <div className="text-xs text-muted-foreground w-6 text-center">
+            {row}
+          </div>
           <div className="flex gap-1">
             {Array.from({ length: seatsInRow }, (_, seatIndex) => {
               const seatLetter = String.fromCharCode(65 + seatIndex);
+              console.log(seatLetter, "seatLetter");
               const seatId = `${row}${seatLetter}`;
               const seatNumber = seatNumberMap.get(seatId) ?? "";
-              
-              // Skip middle seats (B and C) for entrance rows and show entrance indicator
-              if (isEntranceRow && seatIndex === 1) {
+
+              // Show entrance after seat B in entrance rows
+              if (isEntranceRow && seatIndex === 2) {
                 return (
                   <React.Fragment key={`entrance-${row}`}>
-                    <div className="w-[208px] h-10 flex items-center justify-center gap-2 bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded text-xs text-muted-foreground font-medium">
+                    <div className="w-[196px] h-10 flex items-center justify-center gap-2 bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded text-xs text-muted-foreground font-medium">
                       <DoorOpen className="h-4 w-4" />
-                      ENTRANCE
+                      ULAZ
                     </div>
-                    <Seat
-                      seatId={`${row}D`}
-                      displayLabel={seatNumberMap.get(`${row}D`) ?? ""}
-                      config={config}
-                      onToggleEmptySpace={onToggleEmptySpace}
-                      onUpdateSeatNumber={onUpdateSeatNumber}
-                      onToggleTourGuideSeat={onToggleTourGuideSeat}
-                      onSeatAssignment={onSeatAssignment}
-                    />
                   </React.Fragment>
                 );
               }
-              
-              // Skip B, C, D seats in entrance rows as they're handled above
-              if (isEntranceRow && (seatIndex === 1 || seatIndex === 2 || seatIndex === 3)) {
+
+              // Skip seat D in entrance rows
+              if (isEntranceRow && seatIndex === 3) {
                 return null;
               }
-              
+
               return (
                 <div key={seatId} className="flex items-center gap-1">
                   <Seat
@@ -310,7 +346,9 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
                     onToggleTourGuideSeat={onToggleTourGuideSeat}
                     onSeatAssignment={onSeatAssignment}
                   />
-                  {seatIndex === 1 && (!isLastRow || seatsInRow !== 5) && !isEntranceRow && <div className="w-24" />}
+                  {seatIndex === 1 && (!isLastRow || seatsInRow !== 5) && (
+                    <div className="w-24" />
+                  )}
                 </div>
               );
             })}
@@ -323,12 +361,14 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
 
   const renderUpperDeck = () => {
     if (!config.hasUpperDeck) return null;
-    
+
     const rows = [];
     for (let row = 1; row <= config.upperDeckRows; row++) {
       rows.push(
         <div key={`upper-${row}`} className="flex justify-center gap-2 mb-2">
-          <div className="text-xs text-muted-foreground w-6 text-center">U{row}</div>
+          <div className="text-xs text-muted-foreground w-6 text-center">
+            U{row}
+          </div>
           <div className="flex gap-1">
             {Array.from({ length: 4 }, (_, seatIndex) => {
               const seatLetter = String.fromCharCode(65 + seatIndex);
@@ -380,7 +420,10 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
   // Double deck - with tabs
   return (
     <div className="space-y-6">
-      <Tabs value={activeDeck} onValueChange={(value) => setActiveDeck(value as 'main' | 'upper')}>
+      <Tabs
+        value={activeDeck}
+        onValueChange={(value) => setActiveDeck(value as "main" | "upper")}
+      >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="main" className="flex items-center gap-2">
             <Car className="h-4 w-4" />
@@ -391,7 +434,7 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
             Upper Deck
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="main">
           <Card className="shadow-lg border-border/60">
             <CardHeader className="pb-3">
