@@ -216,10 +216,19 @@ export const BusLayout = ({ config, onToggleEmptySpace, onUpdateSeatNumber, onTo
     // Main deck
     for (let row = 1; row <= config.mainDeckRows; row++) {
       const isLastRow = row === config.mainDeckRows;
+      const isEntranceRow = config.entranceRows?.includes(row);
       const seatsInRow = isLastRow ? config.lastRowSeats : 4;
+      
       for (let seatIndex = 0; seatIndex < seatsInRow; seatIndex++) {
         const seatLetter = String.fromCharCode(65 + seatIndex);
         const sid = `${row}${seatLetter}`;
+        
+        // For entrance rows, skip B and C but count them in numbering
+        if (isEntranceRow && (seatLetter === 'B' || seatLetter === 'C')) {
+          counter += 1; // Count the entrance position
+          continue;
+        }
+        
         if (!config.emptySpaces.has(sid)) {
           counter += 1;
           map.set(sid, String(counter));
