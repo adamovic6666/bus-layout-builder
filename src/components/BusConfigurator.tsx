@@ -23,12 +23,14 @@ export interface BusConfig {
   hasUpperDeck: boolean;
   lastRowSeats: 4 | 5;
   tourGuideSeats: string[];
+  driverSeats: string[];
   emptySpaces: Set<string>;
   seatNumbers: Map<string, string>;
   people: Person[];
   seatAssignments: Map<string, string>; // seatId -> personId
   entranceCount: 1 | 2;
   entranceRows: number[];
+  upperDeckEntranceRows: number[];
   hasTablesOnMainDeck: boolean;
   tableRows: number[];
 }
@@ -42,12 +44,14 @@ const BusConfigurator = () => {
     hasUpperDeck: false,
     lastRowSeats: 5,
     tourGuideSeats: [],
+    driverSeats: [],
     emptySpaces: new Set(),
     seatNumbers: new Map(),
     people: [],
     seatAssignments: new Map(),
     entranceCount: 1,
     entranceRows: [1],
+    upperDeckEntranceRows: [],
     hasTablesOnMainDeck: false,
     tableRows: [],
   });
@@ -689,6 +693,29 @@ const BusConfigurator = () => {
                   </div>
                 )}
 
+                {/* Upper Deck Entrance Configuration */}
+                {config.hasUpperDeck && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <DoorOpen className="h-4 w-4" />
+                      Upper Deck Entrance
+                    </Label>
+                    <Input
+                      type="text"
+                      value={config.upperDeckEntranceRows.join(', ')}
+                      onChange={(e) => {
+                        const rows = e.target.value
+                          .split(',')
+                          .map(s => parseInt(s.trim()))
+                          .filter(n => !isNaN(n) && n >= 1 && n <= config.upperDeckRows);
+                        setConfig(prev => ({ ...prev, upperDeckEntranceRows: rows }));
+                      }}
+                      placeholder="e.g. 1 or 1, 2"
+                      className="text-center text-xs"
+                    />
+                  </div>
+                )}
+
                 {/* Statistics */}
                 <div className="pt-2 border-t space-y-2">
                   <div className="flex items-center justify-between text-sm">
@@ -711,7 +738,9 @@ const BusConfigurator = () => {
             {/* Tour Guide Configuration */}
             <TourGuideConfig
               tourGuideSeats={config.tourGuideSeats}
+              driverSeats={config.driverSeats}
               onTourGuideSeatsChange={(seats) => setConfig(prev => ({ ...prev, tourGuideSeats: seats }))}
+              onDriverSeatsChange={(seats) => setConfig(prev => ({ ...prev, driverSeats: seats }))}
               totalSeats={getTotalSeats()}
             />
 
@@ -745,7 +774,7 @@ const BusConfigurator = () => {
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground space-y-2">
                 <p>• Click seats to mark as empty spaces</p>
-                <p>• Ctrl+Click seats for tour guide positions</p>
+                <p>• Ctrl+Click seats for tour guide/driver positions</p>
                 <p>• Double-click seat numbers to edit them</p>
                 <p>• Drag people from right panel to assign seats</p>
                 <p>• Import CSV/Excel with name and birth columns</p>
@@ -765,6 +794,12 @@ const BusConfigurator = () => {
                     ? config.tourGuideSeats.filter(seat => seat !== seatId)
                     : [...config.tourGuideSeats, seatId];
                   setConfig(prev => ({ ...prev, tourGuideSeats: newTourGuideSeats }));
+                }}
+                onToggleDriverSeat={(seatId) => {
+                  const newDriverSeats = config.driverSeats.includes(seatId)
+                    ? config.driverSeats.filter(seat => seat !== seatId)
+                    : [...config.driverSeats, seatId];
+                  setConfig(prev => ({ ...prev, driverSeats: newDriverSeats }));
                 }}
                 onSeatAssignment={(seatId, personId, fromSeatId) => {
                   setConfig(prev => {
