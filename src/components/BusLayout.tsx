@@ -56,11 +56,13 @@ const Seat = ({
   const isEmpty = config.emptySpaces.has(seatId);
   const customNumber = config.seatNumbers.get(seatId);
   const isNumeric = (val?: string) => !!val && /^\d+$/.test(val);
-  const displayResolved = isNumeric(customNumber)
-    ? customNumber!
-    : displayLabel;
   const isTourGuideSeat = config.tourGuideSeats.includes(seatId);
   const isDriverSeat = config.driverSeats.includes(seatId);
+  const displayResolved = isTourGuideSeat 
+    ? "GUIDE" 
+    : isNumeric(customNumber)
+    ? customNumber!
+    : displayLabel;
   const assignedPersonId = config.seatAssignments.get(seatId);
   const assignedPerson = assignedPersonId
     ? config.people.find((p) => p.id === assignedPersonId)
@@ -90,12 +92,10 @@ const Seat = ({
   const handleClick = (e: React.MouseEvent) => {
     if (transform) return; // if dragging, ignore clicks
     if (assignedPerson) return; // don't toggle when occupied; use drag instead
-    if (e.ctrlKey || e.metaKey) {
-      if (e.shiftKey) {
-        onToggleDriverSeat?.(seatId);
-      } else {
-        onToggleTourGuideSeat?.(seatId);
-      }
+    if (e.shiftKey) {
+      onToggleDriverSeat?.(seatId);
+    } else if (e.ctrlKey || e.metaKey) {
+      onToggleTourGuideSeat?.(seatId);
     } else {
       onToggleEmptySpace(seatId);
     }
@@ -183,12 +183,12 @@ const Seat = ({
                     onDoubleClick={handleDoubleClick}
                     title={
                       isDriverSeat
-                        ? `Driver Seat ${displayResolved} (Ctrl+Shift+click to remove)`
+                        ? `Driver Seat (Shift+click to remove)`
                         : isTourGuideSeat
-                        ? `Tour Guide Seat ${displayResolved} (Ctrl+click to remove)`
+                        ? `Tour Guide Seat (Ctrl+click to remove)`
                         : assignedPerson
                         ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
-                        : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, Ctrl+Shift+click for driver, double-click to edit)`
+                        : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, Shift+click for driver, double-click to edit)`
                     }
                   >
                     {assignedPerson.name}
@@ -244,12 +244,12 @@ const Seat = ({
               onDoubleClick={handleDoubleClick}
               title={
                 isDriverSeat
-                  ? `Driver Seat ${displayResolved} (Ctrl+Shift+click to remove)`
+                  ? `Driver Seat (Shift+click to remove)`
                   : isTourGuideSeat
-                  ? `Tour Guide Seat ${displayResolved} (Ctrl+click to remove)`
+                  ? `Tour Guide Seat (Ctrl+click to remove)`
                   : assignedPerson
                   ? `Seat ${displayResolved} - ${assignedPerson.name} (drag to move)`
-                  : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, Ctrl+Shift+click for driver, double-click to edit)`
+                  : `Seat ${displayResolved} (click to mark empty, Ctrl+click for tour guide, Shift+click for driver, double-click to edit)`
               }
             >
               {assignedPerson ? assignedPerson.name : displayResolved}
@@ -297,7 +297,8 @@ export const BusLayout = ({
           continue;
         }
 
-        if (!config.emptySpaces.has(sid)) {
+        // Skip driver seats and empty spaces from numbering
+        if (!config.emptySpaces.has(sid) && !config.driverSeats.includes(sid)) {
           counter += 1;
           map.set(sid, String(counter));
         }
@@ -318,7 +319,8 @@ export const BusLayout = ({
             continue;
           }
 
-          if (!config.emptySpaces.has(sid)) {
+          // Skip driver seats and empty spaces from numbering
+          if (!config.emptySpaces.has(sid) && !config.driverSeats.includes(sid)) {
             counter += 1;
             map.set(sid, String(counter));
           }
