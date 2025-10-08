@@ -297,8 +297,8 @@ export const BusLayout = ({
         const seatLetter = String.fromCharCode(65 + seatIndex);
         const sid = `${row}${seatLetter}`;
 
-        // Skip the entrance placeholders (B and C) without incrementing further
-        if (isEntranceRow && (seatLetter === 'B' || seatLetter === 'C')) {
+        // Skip the entrance placeholders (C and D) without incrementing further
+        if (isEntranceRow && (seatLetter === 'C' || seatLetter === 'D')) {
           continue;
         }
 
@@ -314,7 +314,7 @@ export const BusLayout = ({
       for (let row = 1; row <= config.upperDeckRows; row++) {
         const isUpperEntranceRow = config.upperDeckEntranceRows?.includes(row);
         
-        // For upper deck entrance rows, reserve numbering for B and C
+        // For upper deck entrance rows, reserve numbering for C and D
         if (isUpperEntranceRow) {
           counter += 2;
         }
@@ -323,8 +323,8 @@ export const BusLayout = ({
           const seatLetter = String.fromCharCode(65 + seatIndex);
           const sid = `U${row}${seatLetter}`;
 
-          // Skip the entrance placeholders (B and C)
-          if (isUpperEntranceRow && (seatLetter === 'B' || seatLetter === 'C')) {
+          // Skip the entrance placeholders (C and D)
+          if (isUpperEntranceRow && (seatLetter === 'C' || seatLetter === 'D')) {
             continue;
           }
 
@@ -381,30 +381,20 @@ export const BusLayout = ({
               const seatId = `${row}${seatLetter}`;
               const seatNumber = seatNumberMap.get(seatId) ?? "";
 
-              // Show entrance after seat A in entrance rows
-              if (isEntranceRow && seatIndex === 1) {
+              // Show entrance after seat B in entrance rows (spans C and D)
+              if (isEntranceRow && seatIndex === 2) {
                 return (
                   <React.Fragment key={`entrance-${row}`}>
                     <div className="w-[208px] h-10 flex items-center justify-center gap-2 bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded text-xs text-muted-foreground font-medium">
                       <DoorOpen className="h-4 w-4" />
                       ENTRANCE
                     </div>
-                    <Seat
-                      seatId={`${row}D`}
-                      displayLabel={seatNumberMap.get(`${row}D`) ?? ""}
-                      config={config}
-                      onToggleEmptySpace={onToggleEmptySpace}
-                      onUpdateSeatNumber={onUpdateSeatNumber}
-                      onToggleTourGuideSeat={onToggleTourGuideSeat}
-                      onToggleDriverSeat={onToggleDriverSeat}
-                      onSeatAssignment={onSeatAssignment}
-                    />
                   </React.Fragment>
                 );
               }
 
-              // Skip seats B, C, D after we've already rendered the entrance block
-              if (isEntranceRow && (seatIndex === 2 || seatIndex === 3)) {
+              // Skip seat D in entrance rows (C is skipped by the entrance block above)
+              if (isEntranceRow && seatIndex === 3) {
                 return null;
               }
 
@@ -451,30 +441,20 @@ export const BusLayout = ({
               const seatId = `U${row}${seatLetter}`;
               const seatNumber = seatNumberMap.get(seatId) ?? "";
 
-              // Show entrance after seat A in entrance rows
-              if (isUpperEntranceRow && seatIndex === 1) {
+              // Show entrance after seat B in entrance rows (spans C and D)
+              if (isUpperEntranceRow && seatIndex === 2) {
                 return (
                   <React.Fragment key={`entrance-${row}`}>
                     <div className="w-[208px] h-10 flex items-center justify-center gap-2 bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded text-xs text-muted-foreground font-medium">
                       <DoorOpen className="h-4 w-4" />
                       ENTRANCE
                     </div>
-                    <Seat
-                      seatId={`U${row}D`}
-                      displayLabel={seatNumberMap.get(`U${row}D`) ?? ""}
-                      config={config}
-                      onToggleEmptySpace={onToggleEmptySpace}
-                      onUpdateSeatNumber={onUpdateSeatNumber}
-                      onToggleTourGuideSeat={onToggleTourGuideSeat}
-                      onToggleDriverSeat={onToggleDriverSeat}
-                      onSeatAssignment={onSeatAssignment}
-                    />
                   </React.Fragment>
                 );
               }
 
-              // Skip seats B, C, D after we've already rendered the entrance block
-              if (isUpperEntranceRow && (seatIndex === 2 || seatIndex === 3)) {
+              // Skip seat D in entrance rows (C is skipped by the entrance block above)
+              if (isUpperEntranceRow && seatIndex === 3) {
                 return null;
               }
 
