@@ -288,16 +288,11 @@ export const BusLayout = ({
         continue;
       }
 
-      // For entrance rows, reserve numbering for B and C BEFORE actual seats
-      if (isEntranceRow) {
-        counter += 2;
-      }
-
       for (let seatIndex = 0; seatIndex < seatsInRow; seatIndex++) {
         const seatLetter = String.fromCharCode(65 + seatIndex);
         const sid = `${row}${seatLetter}`;
 
-        // Skip the entrance placeholders (C and D) without incrementing further
+        // Skip the entrance placeholders (C and D) without incrementing
         if (isEntranceRow && (seatLetter === 'C' || seatLetter === 'D')) {
           continue;
         }
@@ -313,11 +308,6 @@ export const BusLayout = ({
     if (config.hasUpperDeck) {
       for (let row = 1; row <= config.upperDeckRows; row++) {
         const isUpperEntranceRow = config.upperDeckEntranceRows?.includes(row);
-        
-        // For upper deck entrance rows, reserve numbering for C and D
-        if (isUpperEntranceRow) {
-          counter += 2;
-        }
 
         for (let seatIndex = 0; seatIndex < 4; seatIndex++) {
           const seatLetter = String.fromCharCode(65 + seatIndex);
@@ -381,10 +371,11 @@ export const BusLayout = ({
               const seatId = `${row}${seatLetter}`;
               const seatNumber = seatNumberMap.get(seatId) ?? "";
 
-              // Show entrance after seat B in entrance rows (spans C and D)
+              // Show gap and entrance after seat B in entrance rows
               if (isEntranceRow && seatIndex === 2) {
                 return (
                   <React.Fragment key={`entrance-${row}`}>
+                    <div className="w-2" />
                     <div className="w-[208px] h-10 flex items-center justify-center gap-2 bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded text-xs text-muted-foreground font-medium">
                       <DoorOpen className="h-4 w-4" />
                       ENTRANCE
@@ -441,10 +432,11 @@ export const BusLayout = ({
               const seatId = `U${row}${seatLetter}`;
               const seatNumber = seatNumberMap.get(seatId) ?? "";
 
-              // Show entrance after seat B in entrance rows (spans C and D)
+              // Show gap and entrance after seat B in entrance rows
               if (isUpperEntranceRow && seatIndex === 2) {
                 return (
                   <React.Fragment key={`entrance-${row}`}>
+                    <div className="w-2" />
                     <div className="w-[208px] h-10 flex items-center justify-center gap-2 bg-muted/30 border-2 border-dashed border-muted-foreground/30 rounded text-xs text-muted-foreground font-medium">
                       <DoorOpen className="h-4 w-4" />
                       ENTRANCE
